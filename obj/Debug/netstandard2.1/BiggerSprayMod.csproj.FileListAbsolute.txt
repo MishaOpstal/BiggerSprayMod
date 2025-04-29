@@ -6,3 +6,4 @@ C:\Users\misha\Documents\GitHub\BiggerSprayMod\obj\Debug\netstandard2.1\BiggerSp
 C:\Users\misha\Documents\GitHub\BiggerSprayMod\obj\Debug\netstandard2.1\BiggerSprayMod.AssemblyInfo.cs
 C:\Users\misha\Documents\GitHub\BiggerSprayMod\obj\Debug\netstandard2.1\BiggerSprayMod.csproj.CoreCompileInputs.cache
 C:\Users\misha\Documents\GitHub\BiggerSprayMod\obj\Debug\netstandard2.1\BiggerSprayMod.dll
+C:\Users\misha\Documents\GitHub\BiggerSprayMod\obj\Debug\netstandard2.1\BiggerSprayMod.sourcelink.json
