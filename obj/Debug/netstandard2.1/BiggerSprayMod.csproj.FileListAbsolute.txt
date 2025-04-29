@@ -1,0 +1,8 @@
+C:\Users\misha\Documents\GitHub\BiggerSprayMod\bin\Debug\netstandard2.1\BiggerSprayMod.deps.json
+C:\Users\misha\Documents\GitHub\BiggerSprayMod\bin\Debug\netstandard2.1\BiggerSprayMod.dll
+C:\Users\misha\Documents\GitHub\BiggerSprayMod\obj\Debug\netstandard2.1\BiggerSprayMod.csproj.AssemblyReference.cache
+C:\Users\misha\Documents\GitHub\BiggerSprayMod\obj\Debug\netstandard2.1\BiggerSprayMod.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\misha\Documents\GitHub\BiggerSprayMod\obj\Debug\netstandard2.1\BiggerSprayMod.AssemblyInfoInputs.cache
+C:\Users\misha\Documents\GitHub\BiggerSprayMod\obj\Debug\netstandard2.1\BiggerSprayMod.AssemblyInfo.cs
+C:\Users\misha\Documents\GitHub\BiggerSprayMod\obj\Debug\netstandard2.1\BiggerSprayMod.csproj.CoreCompileInputs.cache
+C:\Users\misha\Documents\GitHub\BiggerSprayMod\obj\Debug\netstandard2.1\BiggerSprayMod.dll
