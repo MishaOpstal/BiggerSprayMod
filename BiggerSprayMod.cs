@@ -12,7 +12,7 @@ using UnityEngine;
 
 namespace BiggerSprayMod;
 
-[BepInPlugin("MishaOpstal.BigSprayMod", "Bigger Spray Mod", "1.3.0")]
+[BepInPlugin("MishaOpstal.BigSprayMod", "Bigger Spray Mod", "1.3.1")]
 [BepInDependency(REPOLib.MyPluginInfo.PLUGIN_GUID, BepInDependency.DependencyFlags.HardDependency)]
 public class BiggerSprayMod : BaseUnityPlugin, IOnEventCallback
 {
@@ -748,7 +748,7 @@ public class BiggerSprayMod : BaseUnityPlugin, IOnEventCallback
             byte[] imageData = _cachedSprayTexture.EncodeToPNG();
             byte[] compressedData = CompressImage(imageData);
 
-            if (compressedData.Length > 250000) // Safety check
+            if (compressedData.Length > 500000) // Safety check
             {
                 Logger.LogWarning("[BiggerSprayMod] Spray image too large to send over network!");
                 return;
