@@ -4,7 +4,7 @@ A customizable spray mod for R.E.P.O. that allows players to place custom images
 
 ## Features
 
-- **Custom Spray Images**: Use your own PNG/JPG images as sprays (GIF support coming soon)
+- **Custom Spray Images**: Use your own PNG/JPG as well as animated GIF images as sprays
 - **Adjustable Size**: Scale your sprays from tiny to massive
 - **Multiple Spray Support**: Cycle through multiple spray images in-game
 - **Network Synchronization**: All players see each other's sprays
@@ -15,7 +15,7 @@ A customizable spray mod for R.E.P.O. that allows players to place custom images
 
 1. Ensure you have [BepInEx](https://thunderstore.io/c/repo/p/BepInEx/BepInExPack/) installed
 2. Make sure you have [REPOLib](https://thunderstore.io/c/repo/p/Zehs/REPOLib/) installed
-3. Download the latest release from the [Thunderstore](https://github.com/your-username/BiggerSprayMod/releases) page
+3. Download the latest release from the [Thunderstore](https://thunderstore.io/c/repo/p/OnTheLink/BiggerSprayMod/) page
 4. Extract the contents to your R.E.P.O. game directory
 5. The mod will be installed to `BepInEx/plugins/BiggerSprayMod`
 
@@ -73,9 +73,9 @@ The mod creates a config file at `BepInEx/config/MishaOpstal.BigSprayMod.cfg` wi
 
 ## Compatibility
 
-- Requires R.E.P.O. version 1.x or higher
-- Requires BepInEx 5.x or higher
-- Requires REPOLib
+- Requires R.E.P.O. version 0.1.2+
+- Requires BepInEx 5.4 or higher
+- Requires REPOLib 2.1.0+
 
 ## Known Issues
 
