@@ -12,7 +12,7 @@ using UnityEngine;
 
 namespace BiggerSprayMod;
 
-[BepInPlugin("MishaOpstal.BigSprayMod", "Bigger Spray Mod", "1.5.0")]
+[BepInPlugin("MishaOpstal.BigSprayMod", "Bigger Spray Mod", "1.5.2")]
 [BepInDependency(REPOLib.MyPluginInfo.PLUGIN_GUID, BepInDependency.DependencyFlags.HardDependency)]
 public class BiggerSprayMod : BaseUnityPlugin, IOnEventCallback
 {

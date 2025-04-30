@@ -16,6 +16,7 @@ public class NetworkUtils
     public const byte SprayEventCode = 42;
     public const byte SettingsRequestEventCode = 43;
     public const byte SettingsResponseEventCode = 44;
+    public const byte GifSprayEventCode = 45;
     
     public NetworkUtils(BiggerSprayMod plugin)
     {
@@ -29,6 +30,10 @@ public class NetworkUtils
         {
             case SprayEventCode:
                 _plugin._sprayUtils.HandleSprayEvent(photonEvent);
+                break;
+
+            case GifSprayEventCode:
+                _plugin._sprayUtils.HandleGifSprayEvent(photonEvent);
                 break;
 
             case SettingsRequestEventCode:
@@ -86,7 +91,14 @@ public class NetworkUtils
     {
         try
         {
-            // For animated GIFs, we only send the current frame
+            // Handle animated GIFs differently than static images
+            if (_plugin._isAnimatedGif && _plugin._gifFrames.Count > 0)
+            {
+                SendGifToNetwork(hitPoint, hitNormal);
+                return;
+            }
+            
+            // For static images, send as usual
             Texture2D textureToSend = _plugin._cachedSprayTexture;
             
             if (textureToSend == null)
@@ -99,7 +111,7 @@ public class NetworkUtils
             byte[] imageData = textureToSend.EncodeToPNG();
             byte[] compressedData = _plugin._imageUtils.CompressImage(imageData);
 
-            if (compressedData.Length > 500000) // Safety check
+            if (compressedData.Length > 6000000) // Safety check
             {
                 _plugin.LogMessage(LogLevel.Warning,"[BiggerSprayMod] Spray image too large to send over network!");
                 return;
@@ -124,18 +136,80 @@ public class NetworkUtils
                 SendOptions.SendReliable
             );
 
-            if (_plugin._isAnimatedGif)
-            {
-                _plugin.LogMessage(LogLevel.Info,$"[BiggerSprayMod] Sent GIF frame to network ({compressedData.Length} bytes)");
-            }
-            else
-            {
-                _plugin.LogMessage(LogLevel.Info,$"[BiggerSprayMod] Sent spray to network ({compressedData.Length} bytes)");
-            }
+            _plugin.LogMessage(LogLevel.Info,$"[BiggerSprayMod] Sent spray to network ({compressedData.Length} bytes)");
         }
         catch (Exception ex)
         {
             _plugin.LogMessage(LogLevel.Error,$"[BiggerSprayMod] Error sending spray: {ex.Message}");
+        }
+    }
+
+    public void SendGifToNetwork(Vector3 hitPoint, Vector3 hitNormal)
+    {
+        try
+        {
+            // Prepare GIF data: frames and delays
+            int frameCount = _plugin._gifFrames.Count;
+            if (frameCount == 0)
+            {
+                _plugin.LogMessage(LogLevel.Error,"[BiggerSprayMod] No GIF frames to send over network!");
+                return;
+            }
+            
+            // Calculate the contained scale dimensions
+            Vector2 adjustedScale = _plugin._scalingUtils.CalculateContainedScale(_plugin._configManager.SprayScale.Value);
+            
+            // Prepare frame data for network transmission
+            byte[][] compressedFrames = new byte[frameCount][];
+            float[] frameDelays = new float[frameCount];
+            
+            // Total size check
+            long totalSize = 0;
+            
+            // Process each frame
+            for (int i = 0; i < frameCount; i++)
+            {
+                // Compress frame
+                byte[] frameData = _plugin._gifFrames[i].EncodeToPNG();
+                byte[] compressedFrame = _plugin._imageUtils.CompressImage(frameData);
+                compressedFrames[i] = compressedFrame;
+                frameDelays[i] = _plugin._gifFrameDelays[i];
+                
+                totalSize += compressedFrame.Length;
+            }
+            
+            // Check if total size is too big
+            if (totalSize > 6000000) // 2MB limit for all frames
+            {
+                _plugin.LogMessage(LogLevel.Warning,$"[BiggerSprayMod] GIF too large to send over network ({totalSize} bytes)!");
+                return;
+            }
+            
+            // Create GIF spray data packet
+            object[] gifSprayData =
+            [
+                frameCount,             // Number of frames
+                compressedFrames,       // Compressed frame data
+                frameDelays,            // Frame delay timings
+                hitPoint,               // Hit position
+                hitNormal,              // Hit normal
+                adjustedScale.x,        // Scale X
+                adjustedScale.y         // Scale Y
+            ];
+            
+            // Send GIF data to network
+            PhotonNetwork.RaiseEvent(
+                GifSprayEventCode,
+                gifSprayData,
+                new RaiseEventOptions { Receivers = ReceiverGroup.Others },
+                SendOptions.SendReliable
+            );
+            
+            _plugin.LogMessage(LogLevel.Info, $"[BiggerSprayMod] Sent GIF with {frameCount} frames to network ({totalSize} bytes)");
+        }
+        catch (Exception ex)
+        {
+            _plugin.LogMessage(LogLevel.Error,$"[BiggerSprayMod] Error sending GIF spray: {ex.Message}");
         }
     }
     
