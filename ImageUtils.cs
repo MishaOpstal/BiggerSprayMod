@@ -6,6 +6,7 @@ using BepInEx.Configuration;
 using BepInEx.Logging;
 using UnityEngine;
 using BiggerSprayMod.gif;
+using System.Collections.Generic;
 
 namespace BiggerSprayMod;
 
@@ -82,31 +83,18 @@ public class ImageUtils
 
         try
         {
-            // Clear any existing GIF data
+            // Clear any existing global GIF data
             ClearGifData();
             
-            byte[] data = File.ReadAllBytes(filePath);
+            // Load and decode GIF
+            List<Texture2D> frames = new List<Texture2D>();
+            List<float> delays = new List<float>();
             
-            using (var decoder = new Decoder(data))
+            if (LoadGifFrames(filePath, frames, delays))
             {
-                var img = decoder.NextImage();
-                
-                if (img == null)
-                {
-                    _plugin.LogMessage(LogLevel.Error, $"[BiggerSprayMod] Failed to decode GIF from {filePath}");
-                    return;
-                }
-                
-                while (img != null)
-                {
-                    Texture2D tex = img.CreateTexture();
-                    float delay = img.Delay / 1000.0f; // Convert from milliseconds to seconds
-                    
-                    _plugin._gifFrames.Add(tex);
-                    _plugin._gifFrameDelays.Add(delay);
-                    
-                    img = decoder.NextImage();
-                }
+                // Store in global GIF data (for backward compatibility)
+                _plugin._gifFrames.AddRange(frames);
+                _plugin._gifFrameDelays.AddRange(delays);
                 
                 if (_plugin._gifFrames.Count > 0)
                 {
@@ -133,6 +121,92 @@ public class ImageUtils
         {
             _plugin.LogMessage(LogLevel.Error, $"[BiggerSprayMod] Error loading GIF: {ex.Message}");
             ClearGifData();
+        }
+    }
+    
+    public bool LoadGifFrames(string filePath, List<Texture2D> frames, List<float> delays)
+    {
+        if (!File.Exists(filePath))
+        {
+            _plugin.LogMessage(LogLevel.Error, $"[BiggerSprayMod] GIF file not found at {filePath}");
+            return false;
+        }
+        
+        try
+        {
+            // Check the size of the GIF file
+            FileInfo fileInfo = new FileInfo(filePath);
+            if (fileInfo.Length > 10000000) // 10 MB limit for safety
+            {
+                _plugin.LogMessage(LogLevel.Warning, $"[BiggerSprayMod] GIF file is very large ({fileInfo.Length / 1024 / 1024}MB), loading may be slow or cause issues");
+            }
+            
+            byte[] data = File.ReadAllBytes(filePath);
+            
+            // Clear existing frames if any (safety)
+            frames.Clear();
+            delays.Clear();
+            
+            using (var decoder = new Decoder(data))
+            {
+                var img = decoder.NextImage();
+                
+                if (img == null)
+                {
+                    _plugin.LogMessage(LogLevel.Error, $"[BiggerSprayMod] Failed to decode GIF from {filePath}");
+                    return false;
+                }
+                
+                int frameCount = 0;
+                int maxFrames = 100; // Limit to 100 frames for safety
+                
+                while (img != null && frameCount < maxFrames)
+                {
+                    Texture2D tex = img.CreateTexture();
+                    float delay = img.Delay / 1000.0f; // Convert from milliseconds to seconds
+                    
+                    // Ensure minimum frame delay
+                    if (delay < 0.01f) delay = 0.1f; // Set minimum delay of 100ms
+                    
+                    frames.Add(tex);
+                    delays.Add(delay);
+                    frameCount++;
+                    
+                    try 
+                    {
+                        img = decoder.NextImage();
+                    }
+                    catch (Exception ex)
+                    {
+                        _plugin.LogMessage(LogLevel.Error, $"[BiggerSprayMod] Error decoding next GIF frame: {ex.Message}");
+                        break;
+                    }
+                }
+                
+                if (frameCount >= maxFrames)
+                {
+                    _plugin.LogMessage(LogLevel.Warning, $"[BiggerSprayMod] GIF has too many frames. Limited to {maxFrames} frames.");
+                }
+                
+                return frames.Count > 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            _plugin.LogMessage(LogLevel.Error, $"[BiggerSprayMod] Error loading GIF frames: {ex.Message}");
+            
+            // Clean up any partially loaded frames to prevent memory leaks
+            foreach (var texture in frames)
+            {
+                if (texture != null)
+                {
+                    UnityEngine.Object.Destroy(texture);
+                }
+            }
+            
+            frames.Clear();
+            delays.Clear();
+            return false;
         }
     }
     

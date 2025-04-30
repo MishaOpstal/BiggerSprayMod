@@ -1,6 +1,6 @@
 is_global = true
 build_property.RootNamespace = BiggerSprayMod
-build_property.ProjectDir = C:\Users\misha\Documents\GitHub\BiggerSprayMod\
+build_property.ProjectDir = c:\Users\misha\Documents\GitHub\BiggerSprayMod\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.CsWinRTUseWindowsUIXamlProjections = false

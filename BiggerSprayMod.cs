@@ -51,6 +51,7 @@ public class BiggerSprayMod : BaseUnityPlugin, IOnEventCallback
     public ImageUtils _imageUtils;
     public SprayUtils _sprayUtils;
     public NetworkUtils _networkUtils;
+    public WebUtils _webUtils;
 
     // Static instance for easy access
     public static BiggerSprayMod Instance { get; private set; }
@@ -66,6 +67,7 @@ public class BiggerSprayMod : BaseUnityPlugin, IOnEventCallback
         _imageUtils = new ImageUtils(this);
         _sprayUtils = new SprayUtils(this);
         _networkUtils = new NetworkUtils(this);
+        _webUtils = new WebUtils(this);
 
         // Set up paths
         _imagesFolderPath = Path.Combine(Paths.ConfigPath, "BiggerSprayImages");
@@ -145,6 +147,12 @@ public class BiggerSprayMod : BaseUnityPlugin, IOnEventCallback
         if (_isAnimatedGif && _configManager.AnimateGifs.Value && _gifFrames.Count > 0)
         {
             _sprayUtils.UpdateGifAnimations();
+        }
+        
+        // Clean up web GIF cache periodically (every 5 minutes)
+        if (Time.frameCount % 18000 == 0) // ~5 minutes at 60fps
+        {
+            _webUtils.CleanupOldCache();
         }
     }
     
