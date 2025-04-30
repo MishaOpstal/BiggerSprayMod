@@ -15,16 +15,17 @@ A customizable spray mod for R.E.P.O. that allows players to place custom images
 
 1. Ensure you have [BepInEx](https://thunderstore.io/c/repo/p/BepInEx/BepInExPack/) installed
 2. Make sure you have [REPOLib](https://thunderstore.io/c/repo/p/Zehs/REPOLib/) installed
-3. Download the latest release from the [Thunderstore](https://thunderstore.io/c/repo/p/OnTheLink/BiggerSprayMod/) page
-4. Extract the contents to your R.E.P.O. game directory
+3. Download the latest release from the [Thunderstore](https://thunderstore.io/c/repo/p/OnTheLink/BiggerSprayMod/) page or the [Releases](https://github.com/OnTheLink/BiggerSprayMod/releases/tag/Stable) tab.
+4. Extract the contents to your R.E.P.O. BepInEx plugins directory, or install using "Install local mod" in the Thunderstore settings.
 5. The mod will be installed to `BepInEx/plugins/BiggerSprayMod`
 
 ## Adding Your Own Sprays
 
 1. Navigate to `BepInEx/config/BiggerSprayImages/`
-2. Place your PNG or JPG images in this folder
+2. Place your GIF, PNG or JPG images in this folder
 3. In-game, open the mod config and click "Refresh Sprays"
-4. Your images should now be available to select
+4. Close and re-open the menu.
+5. Your images should now be available to select
 
 **Note**: For best performance, keep your spray images under 5MB and use PNG format for transparency support.
 
