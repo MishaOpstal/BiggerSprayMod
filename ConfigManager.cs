@@ -1,3 +1,4 @@
+using System;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using System.Collections.Generic;
@@ -26,8 +27,11 @@ namespace BiggerSprayMod
         public ConfigEntry<float> MinScaleSize;
         public ConfigEntry<float> MaxScaleSize;
         public ConfigEntry<float> ScaleSpeed;
+        public ConfigEntry<bool> OpenSprayImageFolder;
         public ConfigEntry<bool> UseScrollWheel;
         public ConfigEntry<bool> ShowSprayIfLarge;
+        public ConfigEntry<bool> AnimateGifs;
+        public ConfigEntry<int> GifFps;
         
         public ConfigManager(BiggerSprayMod plugin)
         {
@@ -147,6 +151,23 @@ namespace BiggerSprayMod
                 new Color(0.0f, 1.0f, 0.0f, 0.5f), // Semi-transparent green
                 new ConfigDescription("The color of the scale preview.")
             );
+            
+            AnimateGifs = _plugin.Config.Bind(
+                "GIF Settings",
+                "Animate GIFs",
+                true,
+                new ConfigDescription("Enable animation for GIF sprays.")
+            );
+            
+            GifFps = _plugin.Config.Bind(
+                "GIF Settings",
+                "GIF FPS",
+                30,
+                new ConfigDescription(
+                    "Frames per second for GIF animations. Higher values use more resources.",
+                    new AcceptableValueRange<int>(1, 60)
+                )
+            );
 
             SprayLifetimeSeconds = _plugin.Config.Bind(
                 "Host Settings",
@@ -182,10 +203,37 @@ namespace BiggerSprayMod
             {
                 _plugin.LogMessage(LogLevel.Info, "[BiggerSprayMod] Image selection changed. Reloading texture...");
                 string path = System.IO.Path.Combine(_plugin._imagesFolderPath, SelectedSprayImage.Value);
-                _plugin._cachedSprayTexture = _plugin._imageUtils.LoadTexture(path);
-                if (_plugin._cachedSprayTexture != null)
+                
+                // Check if this is a GIF file
+                if (path.ToLower().EndsWith(".gif"))
                 {
-                    _plugin._originalImageDimensions = new Vector2(_plugin._cachedSprayTexture.width, _plugin._cachedSprayTexture.height);
+                    _plugin._imageUtils.LoadGifTexture(path);
+                }
+                else
+                {
+                    _plugin._cachedSprayTexture = _plugin._imageUtils.LoadTexture(path);
+                    _plugin._imageUtils.ClearGifData();
+                    
+                    if (_plugin._cachedSprayTexture != null)
+                    {
+                        _plugin._originalImageDimensions = new Vector2(_plugin._cachedSprayTexture.width, _plugin._cachedSprayTexture.height);
+                    }
+                }
+            };
+            
+            OpenSprayImageFolder = _plugin.Config.Bind(
+                "Spray Settings",
+                "Open Spray Image Folder",
+                false,
+                new ConfigDescription("Set to TRUE to open the spray image folder.")
+            );
+            
+            OpenSprayImageFolder.SettingChanged += (_, _) =>
+            {
+                if (OpenSprayImageFolder.Value)
+                {
+                    OpenImagesFolder();
+                    OpenSprayImageFolder.Value = false; // Reset to false after opening
                 }
             };
 
@@ -219,12 +267,36 @@ namespace BiggerSprayMod
             SelectedSprayImage.SettingChanged += (_, _) =>
             {
                 string path = System.IO.Path.Combine(_plugin._imagesFolderPath, SelectedSprayImage.Value);
-                _plugin._cachedSprayTexture = _plugin._imageUtils.LoadTexture(path);
-                if (_plugin._cachedSprayTexture != null)
+                
+                // Check if this is a GIF file
+                if (path.ToLower().EndsWith(".gif"))
                 {
-                    _plugin._originalImageDimensions = new Vector2(_plugin._cachedSprayTexture.width, _plugin._cachedSprayTexture.height);
+                    _plugin._imageUtils.LoadGifTexture(path);
+                }
+                else
+                {
+                    _plugin._cachedSprayTexture = _plugin._imageUtils.LoadTexture(path);
+                    _plugin._imageUtils.ClearGifData();
+                    
+                    if (_plugin._cachedSprayTexture != null)
+                    {
+                        _plugin._originalImageDimensions = new Vector2(_plugin._cachedSprayTexture.width, _plugin._cachedSprayTexture.height);
+                    }
                 }
             };
+        }
+
+        private void OpenImagesFolder()
+        {
+            _plugin.LogMessage(LogLevel.Info, "[BiggerSprayMod] Opening images folder...");
+            try
+            {
+                Application.OpenURL(_plugin._imagesFolderPath);
+            }
+            catch (Exception ex)
+            {
+                _plugin.LogMessage(LogLevel.Error, $"[BiggerSprayMod] Error opening images folder: {ex.Message}");
+            }
         }
     }
 } 

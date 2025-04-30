@@ -91,7 +91,7 @@ public class ScalingUtils
 
         // Calculate an aspect ratio to maintain proportions
         Vector2 adjustedScale = _plugin._scalingUtils.CalculateContainedScale(scale);
-        _plugin._scalePreviewObject.transform.localScale = new Vector3(adjustedScale.x, adjustedScale.y, 1f);
+        _plugin._scalePreviewObject.transform.localScale = new Vector3(-adjustedScale.x, adjustedScale.y, 1f);
     }
 
     public void UpdateScalingPreview()

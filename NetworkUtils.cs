@@ -86,8 +86,17 @@ public class NetworkUtils
     {
         try
         {
+            // For animated GIFs, we only send the current frame
+            Texture2D textureToSend = _plugin._cachedSprayTexture;
+            
+            if (textureToSend == null)
+            {
+                _plugin.LogMessage(LogLevel.Error,"[BiggerSprayMod] No valid texture to send over network!");
+                return;
+            }
+            
             // Compress texture to reduce network traffic
-            byte[] imageData = _plugin._cachedSprayTexture.EncodeToPNG();
+            byte[] imageData = textureToSend.EncodeToPNG();
             byte[] compressedData = _plugin._imageUtils.CompressImage(imageData);
 
             if (compressedData.Length > 500000) // Safety check
@@ -115,7 +124,14 @@ public class NetworkUtils
                 SendOptions.SendReliable
             );
 
-            _plugin.LogMessage(LogLevel.Info,$"[BiggerSprayMod] Sent spray to network ({compressedData.Length} bytes)");
+            if (_plugin._isAnimatedGif)
+            {
+                _plugin.LogMessage(LogLevel.Info,$"[BiggerSprayMod] Sent GIF frame to network ({compressedData.Length} bytes)");
+            }
+            else
+            {
+                _plugin.LogMessage(LogLevel.Info,$"[BiggerSprayMod] Sent spray to network ({compressedData.Length} bytes)");
+            }
         }
         catch (Exception ex)
         {

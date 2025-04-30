@@ -133,7 +133,9 @@ public class SprayUtils
             // Position and orient the spray
             spray.transform.position = position;
             spray.transform.rotation = rotation;
-            spray.transform.localScale = new Vector3(scale.x, scale.y, 1.0f);
+            
+            // Flip it horizontally
+            spray.transform.localScale = new Vector3(-scale.x, scale.y, 1.0f);
 
             // Create a material with the spray texture
             Material sprayMaterial = new Material(_plugin._sprayMaterialTemplate);
@@ -151,6 +153,13 @@ public class SprayUtils
 
             // Assign the material to the spray
             spray.GetComponent<MeshRenderer>().material = sprayMaterial;
+            
+            // Store GIF data for animation if this is a GIF spray
+            if (_plugin._isAnimatedGif)
+            {
+                // Add component to track this is a GIF spray
+                spray.AddComponent<GifSprayComponent>().Initialize(_plugin._gifFrames.Count > 0);
+            }
 
             // Add to the list of sprays
             _plugin._spawnedSprays.Add(spray);
@@ -306,6 +315,58 @@ public class SprayUtils
         else
         {
             _plugin.LogMessage(LogLevel.Warning,"[BiggerSprayMod] No valid surface detected to spray onto.");
+        }
+    }
+    
+    public void UpdateGifAnimations()
+    {
+        // Only update if we have GIF frames and animation is enabled
+        if (!_plugin._isAnimatedGif || !_plugin._configManager.AnimateGifs.Value || _plugin._gifFrames.Count <= 1)
+            return;
+        
+        // Update the time since last frame
+        _plugin._gifTimeSinceLastFrame += Time.deltaTime;
+        
+        // Check if it's time to show the next frame
+        float frameDelay = _plugin._gifFrameDelays[_plugin._currentGifFrame];
+        
+        // If the delay is too small, use a minimum based on the configured FPS
+        float minimumFrameTime = 1.0f / _plugin._configManager.GifFps.Value;
+        
+        // Use the larger of the two values to prevent too rapid updates
+        float effectiveDelay = Mathf.Max(frameDelay, minimumFrameTime);
+        
+        if (_plugin._gifTimeSinceLastFrame >= effectiveDelay)
+        {
+            // Move to next frame
+            _plugin._currentGifFrame = (_plugin._currentGifFrame + 1) % _plugin._gifFrames.Count;
+            _plugin._gifTimeSinceLastFrame = 0f;
+            
+            // Update the cached texture to the new frame
+            _plugin._cachedSprayTexture = _plugin._gifFrames[_plugin._currentGifFrame];
+            
+            // Update all active GIF sprays
+            UpdateActiveGifSprayTextures();
+        }
+    }
+    
+    private void UpdateActiveGifSprayTextures()
+    {
+        foreach (GameObject spray in _plugin._spawnedSprays)
+        {
+            if (spray == null) continue;
+            
+            // Check if this is a GIF spray
+            GifSprayComponent gifComponent = spray.GetComponent<GifSprayComponent>();
+            if (gifComponent != null && gifComponent.IsGif)
+            {
+                // Update the texture on the material
+                MeshRenderer renderer = spray.GetComponent<MeshRenderer>();
+                if (renderer != null && renderer.material != null)
+                {
+                    renderer.material.mainTexture = _plugin._gifFrames[_plugin._currentGifFrame];
+                }
+            }
         }
     }
 }

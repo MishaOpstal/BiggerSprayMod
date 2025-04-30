@@ -12,7 +12,7 @@ using UnityEngine;
 
 namespace BiggerSprayMod;
 
-[BepInPlugin("MishaOpstal.BigSprayMod", "Bigger Spray Mod", "1.4.0")]
+[BepInPlugin("MishaOpstal.BigSprayMod", "Bigger Spray Mod", "1.5.0")]
 [BepInDependency(REPOLib.MyPluginInfo.PLUGIN_GUID, BepInDependency.DependencyFlags.HardDependency)]
 public class BiggerSprayMod : BaseUnityPlugin, IOnEventCallback
 {
@@ -25,6 +25,13 @@ public class BiggerSprayMod : BaseUnityPlugin, IOnEventCallback
     public readonly List<GameObject> _spawnedSprays = [];
     public Material _sprayMaterialTemplate;
     public Material _previewMaterialTemplate;
+    
+    // GIF Animation
+    public bool _isAnimatedGif;
+    public List<Texture2D> _gifFrames = [];
+    public List<float> _gifFrameDelays = [];
+    public float _gifTimeSinceLastFrame;
+    public int _currentGifFrame;
 
     // Network Settings (received from host)
     public float _hostSprayLifetime = 60f;
@@ -69,30 +76,22 @@ public class BiggerSprayMod : BaseUnityPlugin, IOnEventCallback
         _sprayUtils.CreateSprayPrefabs();
 
         string preloadPath = Path.Combine(_imagesFolderPath, _configManager.SelectedSprayImage.Value);
-        _cachedSprayTexture = _imageUtils.LoadTexture(preloadPath);
-        if (_cachedSprayTexture != null)
+        
+        // Check if this is a GIF file
+        if (preloadPath.ToLower().EndsWith(".gif"))
         {
-            _originalImageDimensions = new Vector2(_cachedSprayTexture.width, _cachedSprayTexture.height);
+            _imageUtils.LoadGifTexture(preloadPath);
+        }
+        else
+        {
+            _cachedSprayTexture = _imageUtils.LoadTexture(preloadPath);
+            if (_cachedSprayTexture != null)
+            {
+                _originalImageDimensions = new Vector2(_cachedSprayTexture.width, _cachedSprayTexture.height);
+            }
         }
 
         Logger.LogInfo("[BiggerSprayMod] Initialized successfully.");
-    }
-
-    private void OnEnable()
-    {
-        // Register for Photon events when plugin is enabled
-        PhotonNetwork.AddCallbackTarget(this);
-        _registeredCallbacks = true;
-    }
-
-    private void OnDisable()
-    {
-        // Unregister when disabled
-        if (_registeredCallbacks)
-        {
-            PhotonNetwork.RemoveCallbackTarget(this);
-            _registeredCallbacks = false;
-        }
     }
     
     // Clean up when the plugin is destroyed
@@ -121,6 +120,9 @@ public class BiggerSprayMod : BaseUnityPlugin, IOnEventCallback
             UnityEngine.Object.Destroy(_scalePreviewObject);
             _scalePreviewObject = null;
         }
+        
+        // Clean up all GIF frames
+        _imageUtils.ClearGifData();
     }
     
     private void Update()
@@ -138,6 +140,12 @@ public class BiggerSprayMod : BaseUnityPlugin, IOnEventCallback
 
         // Check for refresh sprays button
         _sprayUtils.CheckForRefreshSprays();
+        
+        // Update animated GIFs if enabled
+        if (_isAnimatedGif && _configManager.AnimateGifs.Value && _gifFrames.Count > 0)
+        {
+            _sprayUtils.UpdateGifAnimations();
+        }
     }
     
     public void OnEvent(EventData photonEvent)
