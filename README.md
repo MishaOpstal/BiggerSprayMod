@@ -91,6 +91,7 @@ This mod is released under the MIT License. See the LICENSE file for details.
 
 - Developed by MishaOpstal
 - Original mod by [IvitoDev](https://thunderstore.io/c/repo/p/IvitoDev/SprayMod)
+- [mgGIF](https://github.com/gwaredd/mgGif) by [Gwaredd](https://github.com/gwaredd)
 - Special thanks to the R.E.P.O. modding community
 
 ## Support our recreation and future mods
