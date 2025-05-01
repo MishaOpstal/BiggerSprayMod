@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MishaOpstal")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.5.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.5.0+d3df69e5b2ab40e4119bae55fe167eb87085c7fb")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.5.0+ff429967c5387da8895a3a704f895db3706b2126")]
 [assembly: System.Reflection.AssemblyProductAttribute("BiggerSprayMod")]
 [assembly: System.Reflection.AssemblyTitleAttribute("BiggerSprayMod")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.5.0.0")]

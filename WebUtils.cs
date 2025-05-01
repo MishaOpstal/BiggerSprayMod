@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using BepInEx.Logging;
 using UnityEngine;
 using UnityEngine.Networking;
+using BiggerSprayMod.gif;
 
 namespace BiggerSprayMod
 {
@@ -114,30 +115,37 @@ namespace BiggerSprayMod
                     try
                     {
                         byte[] gifBytes = webRequest.downloadHandler.data;
-                        
-                        // Create a temporary file to save the downloaded GIF
-                        string tempFilePath = Path.Combine(Path.GetTempPath(), $"BiggerSprayMod_temp_{DateTime.Now.Ticks}.gif");
-                        File.WriteAllBytes(tempFilePath, gifBytes);
-                        
                         GifData gifData = new GifData();
                         
-                        // Load the GIF frames
-                        if (_plugin._imageUtils.LoadGifFrames(tempFilePath, gifData.Frames, gifData.Delays) && gifData.Frames.Count > 0)
+                        // Use mgGif.Decoder to process the GIF
+                        using (var decoder = new Decoder(gifBytes))
                         {
-                            // Cache the GIF data
-                            _cachedGifs[url] = gifData;
+                            // Extract all frames from the GIF
+                            Image img;
+                            while ((img = decoder.NextImage()) != null)
+                            {
+                                // Create a texture from the image frame
+                                Texture2D texture = img.CreateTexture();
+                                gifData.Frames.Add(texture);
+                                
+                                // Add delay in milliseconds (Decoder provides this in the Image object)
+                                gifData.Delays.Add(img.Delay / 1000f); // Convert milliseconds to seconds
+                            }
                             
-                            _plugin.LogMessage(LogLevel.Info, $"[BiggerSprayMod] Successfully downloaded and processed GIF with {gifData.Frames.Count} frames");
-                            callback?.Invoke(true, gifData);
+                            if (gifData.Frames.Count > 0)
+                            {
+                                // Cache the GIF data
+                                _cachedGifs[url] = gifData;
+                                
+                                _plugin.LogMessage(LogLevel.Info, $"[BiggerSprayMod] Successfully downloaded and processed GIF with {gifData.Frames.Count} frames");
+                                callback?.Invoke(true, gifData);
+                            }
+                            else
+                            {
+                                _plugin.LogMessage(LogLevel.Error, $"[BiggerSprayMod] Failed to decode downloaded GIF - no frames found");
+                                callback?.Invoke(false, null);
+                            }
                         }
-                        else
-                        {
-                            _plugin.LogMessage(LogLevel.Error, $"[BiggerSprayMod] Failed to decode downloaded GIF");
-                            callback?.Invoke(false, null);
-                        }
-                        
-                        // Clean up temp file
-                        try { File.Delete(tempFilePath); } catch { }
                     }
                     catch (Exception ex)
                     {
