@@ -322,7 +322,7 @@ namespace BiggerSprayMod.web
                 string directory = Path.GetDirectoryName(_gifConfigPath);
                 if (Directory.Exists(directory))
                 {
-                    System.Diagnostics.Process.Start(directory);
+                    Application.OpenURL(directory);
                     _plugin.LogMessage(LogLevel.Info, $"[BiggerSprayMod] Opened GIF config folder: {directory}");
                 }
             }
