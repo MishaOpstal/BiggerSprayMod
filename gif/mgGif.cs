@@ -1,4 +1,4 @@
-﻿//#define mgGIF_UNSAFE
+//#define mgGIF_UNSAFE
 
 using System;
 using System.Runtime.CompilerServices;

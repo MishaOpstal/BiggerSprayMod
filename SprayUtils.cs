@@ -1,17 +1,21 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using BepInEx.Logging;
 using ExitGames.Client.Photon;
 using Photon.Pun;
 using UnityEngine;
 using UnityEngine.Rendering;
-using System.Collections.Generic;
+using BiggerSprayMod.web;
 
 namespace BiggerSprayMod;
 
 public class SprayUtils
 {
     private BiggerSprayMod _plugin;
+    
+    // Dictionary to track spray IDs to their corresponding GameObjects
+    private Dictionary<string, GameObject> _sprayIdsToGameObjects = new Dictionary<string, GameObject>();
     
     public SprayUtils(BiggerSprayMod plugin)
     {
@@ -49,6 +53,49 @@ public class SprayUtils
         };
 
         _plugin.LogMessage(LogLevel.Info,"[BiggerSprayMod] Spray materials ready.");
+    }
+    
+    /// <summary>
+    /// Register a spray with its unique ID for tracking
+    /// </summary>
+    public void RegisterSpray(GameObject spray, string sprayId)
+    {
+        if (spray == null || string.IsNullOrEmpty(sprayId))
+            return;
+            
+        // Add a SprayIdentifier component to the spray
+        SprayIdentifier identifier = spray.AddComponent<SprayIdentifier>();
+        identifier.SprayId = sprayId;
+        
+        // Track in our dictionary for fast lookups
+        _sprayIdsToGameObjects[sprayId] = spray;
+    }
+    
+    /// <summary>
+    /// Remove a spray by its ID
+    /// </summary>
+    public bool RemoveSprayById(string sprayId)
+    {
+        if (string.IsNullOrEmpty(sprayId) || !_sprayIdsToGameObjects.TryGetValue(sprayId, out GameObject spray))
+            return false;
+            
+        // Remove from dictionary
+        _sprayIdsToGameObjects.Remove(sprayId);
+        
+        // Remove from the sprays list
+        if (_plugin._spawnedSprays.Contains(spray))
+        {
+            _plugin._spawnedSprays.Remove(spray);
+        }
+        
+        // Destroy the GameObject
+        if (spray != null)
+        {
+            UnityEngine.Object.Destroy(spray);
+            return true;
+        }
+        
+        return false;
     }
     
     public void CreateDefaultSpray()
@@ -106,13 +153,22 @@ public class SprayUtils
     
     public void PlaceSpray(Vector3 position, Quaternion rotation, float lifetime, int maxSprays)
     {
+        // Generate a unique ID for this spray
+        string sprayId = Guid.NewGuid().ToString();
+        
         // Calculate contained scale
         Vector2 adjustedScale = _plugin._scalingUtils.CalculateContainedScale(_plugin._configManager.SprayScale.Value);
-        PlaceSprayWithCustomScale(position, rotation, _plugin._cachedSprayTexture, adjustedScale, lifetime, maxSprays);
+        PlaceSprayWithCustomScale(position, rotation, _plugin._cachedSprayTexture, adjustedScale, sprayId, lifetime, maxSprays);
+        
+        // If we're the host, schedule this spray for removal
+        if (PhotonNetwork.IsMasterClient && PhotonNetwork.IsConnected && lifetime > 0)
+        {
+            _plugin.StartCoroutine(_plugin.ScheduleSprayRemoval(sprayId, lifetime));
+        }
     }
 
     public void PlaceSprayWithCustomScale(Vector3 position, Quaternion rotation, Texture2D texture,
-        Vector2 scale, float lifetime, int maxSprays)
+        Vector2 scale, string sprayId, float lifetime, int maxSprays)
     {
         if (texture == null)
         {
@@ -134,8 +190,6 @@ public class SprayUtils
             // Position and orient the spray
             spray.transform.position = position;
             spray.transform.rotation = rotation;
-            
-            // Flip it horizontally
             spray.transform.localScale = new Vector3(-scale.x, scale.y, 1.0f);
 
             // Create a material with the spray texture
@@ -155,34 +209,33 @@ public class SprayUtils
             // Assign the material to the spray
             spray.GetComponent<MeshRenderer>().material = sprayMaterial;
             
-            // Store GIF data for animation if this is a GIF spray
-            if (_plugin._isAnimatedGif)
-            {
-                // Add component to track this is a GIF spray
-                spray.AddComponent<GifSprayComponent>().Initialize(_plugin._gifFrames.Count > 0);
-            }
+            // Register the spray ID
+            RegisterSpray(spray, sprayId);
 
             // Add to the list of sprays
             _plugin._spawnedSprays.Add(spray);
 
-            // Set the lifetime if needed
-            if (lifetime > 0)
+            // Set the lifetime if needed and we're not in a host-controlled network game
+            if (lifetime > 0 && !PhotonNetwork.IsConnected)
             {
                 UnityEngine.Object.Destroy(spray, lifetime);
             }
 
-            // Handle max sprays limit
-            if (_plugin._spawnedSprays.Count > maxSprays)
+            // Handle max sprays limit if we're not host-controlled
+            if (!PhotonNetwork.IsConnected)
             {
-                // Remove the oldest sprays when we exceed the limit
-                while (_plugin._spawnedSprays.Count > maxSprays)
+                if (_plugin._spawnedSprays.Count > maxSprays)
                 {
-                    GameObject oldest = _plugin._spawnedSprays[0];
-                    _plugin._spawnedSprays.RemoveAt(0);
-
-                    if (oldest != null)
+                    // Remove the oldest sprays when we exceed the limit
+                    while (_plugin._spawnedSprays.Count > maxSprays)
                     {
-                        UnityEngine.Object.Destroy(oldest);
+                        GameObject oldest = _plugin._spawnedSprays[0];
+                        _plugin._spawnedSprays.RemoveAt(0);
+
+                        if (oldest != null)
+                        {
+                            UnityEngine.Object.Destroy(oldest);
+                        }
                     }
                 }
             }
@@ -206,6 +259,7 @@ public class SprayUtils
             Vector3 hitNormal = (Vector3)data[2];
             float scaleX = (float)data[3];
             float scaleY = (float)data[4];
+            string sprayId = data.Length > 5 ? (string)data[5] : Guid.NewGuid().ToString(); // Use provided ID or generate one
 
             // Decompress image
             byte[] imageData = _plugin._imageUtils.DecompressImage(compressedImage);
@@ -223,8 +277,9 @@ public class SprayUtils
                 position, 
                 rotation, 
                 sprayTexture,
-                new Vector2(scaleX, scaleY), 
-                _plugin._hostSprayLifetime, 
+                new Vector2(scaleX, scaleY),
+                sprayId,
+                0, // Lifetime is now managed by the host, not by timer
                 _plugin._hostMaxSprays
             );
 
@@ -232,125 +287,7 @@ public class SprayUtils
         }
         catch (Exception ex)
         {
-            _plugin.LogMessage(LogLevel.Error,$"[BiggerSprayMod] Error processing remote spray: {ex.Message}");
-        }
-    }
-    
-    public void HandleGifSprayEvent(EventData photonEvent)
-    {
-        try
-        {
-            // Extract GIF data
-            object[] data = (object[])photonEvent.CustomData;
-            int frameCount = (int)data[0];
-            byte[][] compressedFrames = (byte[][])data[1];
-            float[] frameDelays = (float[])data[2];
-            Vector3 hitPoint = (Vector3)data[3];
-            Vector3 hitNormal = (Vector3)data[4];
-            float scaleX = (float)data[5];
-            float scaleY = (float)data[6];
-            
-            _plugin.LogMessage(LogLevel.Info,$"[BiggerSprayMod] Received GIF with {frameCount} frames");
-            
-            // Create list for this specific GIF's frames and delays
-            List<Texture2D> frames = new List<Texture2D>();
-            List<float> delays = new List<float>();
-            
-            // Process all frames
-            for (int i = 0; i < frameCount; i++)
-            {
-                // Decompress the frame
-                byte[] imageData = _plugin._imageUtils.DecompressImage(compressedFrames[i]);
-                
-                // Create texture for this frame
-                Texture2D frameTexture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                frameTexture.LoadImage(imageData);
-                
-                // Add to this GIF's data
-                frames.Add(frameTexture);
-                delays.Add(frameDelays[i]);
-            }
-            
-            // Check if we have valid frames
-            if (frames.Count > 0)
-            {
-                Texture2D firstFrame = frames[0];
-                Vector2 dimensions = new Vector2(firstFrame.width, firstFrame.height);
-                
-                // Place the spray with the first frame
-                Vector3 position = hitPoint + hitNormal * 0.01f;
-                Quaternion rotation = Quaternion.LookRotation(hitNormal);
-                
-                // Create a local copy of this GIF spray
-                GameObject spray = GameObject.CreatePrimitive(PrimitiveType.Quad);
-                spray.name = "BiggerSpray_GifInstance";
-                
-                // Remove the collider to avoid physics interactions
-                UnityEngine.Object.Destroy(spray.GetComponent<Collider>());
-                
-                // Position and orient the spray
-                spray.transform.position = position;
-                spray.transform.rotation = rotation;
-                
-                // Apply scale
-                spray.transform.localScale = new Vector3(-scaleX, scaleY, 1.0f);
-                
-                // Create a material with the spray texture
-                Material sprayMaterial = new Material(_plugin._sprayMaterialTemplate);
-                sprayMaterial.mainTexture = firstFrame;
-                
-                // Apply shader settings for transparency
-                sprayMaterial.SetFloat("_Mode", 2); // Fade mode
-                sprayMaterial.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
-                sprayMaterial.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
-                sprayMaterial.SetInt("_ZWrite", 0);
-                sprayMaterial.DisableKeyword("_ALPHATEST_ON");
-                sprayMaterial.EnableKeyword("_ALPHABLEND_ON");
-                sprayMaterial.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-                sprayMaterial.renderQueue = 3000;
-                
-                // Assign the material to the spray
-                spray.GetComponent<MeshRenderer>().material = sprayMaterial;
-                
-                // Add GIF component with its own frames
-                GifSprayComponent gifComponent = spray.AddComponent<GifSprayComponent>();
-                gifComponent.InitializeWithFrames(frames, delays);
-                
-                // Add to the list of sprays
-                _plugin._spawnedSprays.Add(spray);
-                
-                // Set the lifetime if needed
-                if (_plugin._hostSprayLifetime > 0)
-                {
-                    UnityEngine.Object.Destroy(spray, _plugin._hostSprayLifetime);
-                }
-                
-                // Handle max sprays limit
-                if (_plugin._spawnedSprays.Count > _plugin._hostMaxSprays)
-                {
-                    // Remove the oldest sprays when we exceed the limit
-                    while (_plugin._spawnedSprays.Count > _plugin._hostMaxSprays)
-                    {
-                        GameObject oldest = _plugin._spawnedSprays[0];
-                        _plugin._spawnedSprays.RemoveAt(0);
-                        
-                        if (oldest != null)
-                        {
-                            UnityEngine.Object.Destroy(oldest);
-                        }
-                    }
-                }
-                
-                _plugin.LogMessage(LogLevel.Info,"[BiggerSprayMod] GIF spray placed successfully");
-            }
-            else
-            {
-                _plugin.LogMessage(LogLevel.Error,"[BiggerSprayMod] No valid GIF frames received");
-            }
-        }
-        catch (Exception ex)
-        {
-            _plugin.LogMessage(LogLevel.Error,$"[BiggerSprayMod] Error processing GIF spray: {ex.Message}");
+            _plugin.LogMessage(LogLevel.Info,$"[BiggerSprayMod] Error processing remote spray: {ex.Message}");
         }
     }
     
@@ -377,259 +314,127 @@ public class SprayUtils
             return;
         }
 
-        if (_plugin._cachedSprayTexture == null)
+        // Check if we're in GIF mode
+        if (_plugin._gifManager.IsGifMode)
         {
-            _plugin.LogMessage(LogLevel.Error,"[BiggerSprayMod] No valid spray texture loaded. Cannot spray.");
-            return;
-        }
-
-        if (string.IsNullOrEmpty(_plugin._configManager.SelectedSprayImage.Value) || _plugin._configManager.SelectedSprayImage.Value == "No Images Available")
-        {
-            _plugin.LogMessage(LogLevel.Error,"[BiggerSprayMod] No valid spray selected.");
-            return;
-        }
-        
-        // Check the size on disk of the selected image
-        bool sendToNetwork = false;
-        string selectedImagePath = Path.Combine(_plugin._imagesFolderPath ?? _plugin.GetPluginPath(), _plugin._configManager.SelectedSprayImage.Value);
-        if (File.Exists(selectedImagePath))
-        {
-            long fileSize = new FileInfo(selectedImagePath).Length;
-            if (fileSize > 5000000) // 5 MB limit
+            if (string.IsNullOrEmpty(_plugin._gifManager.CurrentGifName) || _plugin._gifManager.CurrentGifName == "No GIFs Available" || _plugin._gifManager.CurrentGifName == "GIFs Disabled - Invalid JSON")
             {
-                _plugin.LogMessage(LogLevel.Warning,"[BiggerSprayMod] Selected image is too large to spray.");
-                
-                if (_plugin._configManager.ShowSprayIfLarge.Value)
-                {
-                    sendToNetwork = true;
-                }
-                else
-                {
-                    _plugin.LogMessage(LogLevel.Warning,"[BiggerSprayMod] Not sending large image to network.");
-                    return;
-                }
+                _plugin.LogMessage(LogLevel.Error,"[BiggerSprayMod] No valid GIF selected.");
+                return;
             }
-            else
+            
+            if (_plugin._cachedSprayTexture == null)
             {
-                sendToNetwork = true;
+                _plugin.LogMessage(LogLevel.Error,"[BiggerSprayMod] No valid GIF texture loaded. Cannot spray.");
+                return;
+            }
+        }
+        else // Regular spray mode
+        {
+            if (_plugin._cachedSprayTexture == null)
+            {
+                _plugin.LogMessage(LogLevel.Error,"[BiggerSprayMod] No valid spray texture loaded. Cannot spray.");
+                return;
+            }
+
+            if (string.IsNullOrEmpty(_plugin._configManager.SelectedSprayImage.Value) || _plugin._configManager.SelectedSprayImage.Value == "No Images Available")
+            {
+                _plugin.LogMessage(LogLevel.Error,"[BiggerSprayMod] No valid spray selected.");
+                return;
+            }
+            
+            // Check the size on disk of the selected image
+            string selectedImagePath = Path.Combine(_plugin._imagesFolderPath ?? _plugin.GetPluginPath(), _plugin._configManager.SelectedSprayImage.Value);
+            if (File.Exists(selectedImagePath))
+            {
+                long fileSize = new FileInfo(selectedImagePath).Length;
+                if (fileSize > 5000000) // 5 MB limit
+                {
+                    _plugin.LogMessage(LogLevel.Warning,"[BiggerSprayMod] Selected image is too large to spray.");
+                    
+                    if (!_plugin._configManager.ShowSprayIfLarge.Value)
+                    {
+                        _plugin.LogMessage(LogLevel.Warning,"[BiggerSprayMod] Not sending large image to network.");
+                        return;
+                    }
+                }
             }
         }
 
         Ray ray = Camera.main.ViewportPointToRay(new Vector3(0.5f, 0.5f));
         if (Physics.Raycast(ray, out RaycastHit hitInfo, 100f))
         {
-            // Calculate position and orientation
+            // Generate a unique ID for this spray
+            string sprayId = Guid.NewGuid().ToString();
+            
+            // Place the spray locally
             Vector3 position = hitInfo.point + hitInfo.normal * 0.01f; // Offset from surface
             Quaternion rotation = Quaternion.LookRotation(hitInfo.normal);
-
-            // Check if this is a GIF file that needs individual frame handling
-            bool isGif = selectedImagePath.ToLower().EndsWith(".gif");
             
-            if (isGif && _plugin._configManager.AnimateGifs.Value)
+            // Check if this is a GIF and should be animated
+            if (_plugin._gifManager.IsGifMode)
             {
-                // Load this GIF's frames specifically for this spray
-                List<Texture2D> frames = new List<Texture2D>();
-                List<float> delays = new List<float>();
-                
-                if (_plugin._imageUtils.LoadGifFrames(selectedImagePath, frames, delays) && frames.Count > 0)
+                string gifUrl = _plugin._gifManager.GetGifUrlByName(_plugin._gifManager.CurrentGifName);
+                if (!string.IsNullOrEmpty(gifUrl))
                 {
-                    // Calculate contained scale
+                    // Always use the URL-based approach for GIFs to benefit from the asset manager
                     Vector2 adjustedScale = _plugin._scalingUtils.CalculateContainedScale(_plugin._configManager.SprayScale.Value);
+                    _plugin._networkUtils.PlaceAnimatedGifSprayByUrl(
+                        position, 
+                        rotation, 
+                        gifUrl, 
+                        adjustedScale,
+                        sprayId,
+                        localSprayLifetime, 
+                        localMaxSprays);
                     
-                    // Create the spray quad
-                    GameObject spray = GameObject.CreatePrimitive(PrimitiveType.Quad);
-                    spray.name = "BiggerSpray_GifInstance";
-                    
-                    // Remove the collider to avoid physics interactions
-                    UnityEngine.Object.Destroy(spray.GetComponent<Collider>());
-                    
-                    // Position and orient the spray
-                    spray.transform.position = position;
-                    spray.transform.rotation = rotation;
-                    
-                    // Flip it horizontally
-                    spray.transform.localScale = new Vector3(-adjustedScale.x, adjustedScale.y, 1.0f);
-                    
-                    // Create a material with the spray texture
-                    Material sprayMaterial = new Material(_plugin._sprayMaterialTemplate);
-                    sprayMaterial.mainTexture = frames[0];
-                    
-                    // Apply shader settings for transparency
-                    sprayMaterial.SetFloat("_Mode", 2); // Fade mode
-                    sprayMaterial.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
-                    sprayMaterial.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
-                    sprayMaterial.SetInt("_ZWrite", 0);
-                    sprayMaterial.DisableKeyword("_ALPHATEST_ON");
-                    sprayMaterial.EnableKeyword("_ALPHABLEND_ON");
-                    sprayMaterial.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-                    sprayMaterial.renderQueue = 3000;
-                    
-                    // Assign the material to the spray
-                    spray.GetComponent<MeshRenderer>().material = sprayMaterial;
-                    
-                    // Add component to track this is a GIF spray with its own frames
-                    GifSprayComponent gifComponent = spray.AddComponent<GifSprayComponent>();
-                    gifComponent.InitializeWithFrames(frames, delays);
-                    
-                    // Add to the list of sprays
-                    _plugin._spawnedSprays.Add(spray);
-                    
-                    // Set the lifetime if needed
-                    if (localSprayLifetime > 0)
+                    // Send to network and update time
+                    if (PhotonNetwork.IsConnected)
                     {
-                        UnityEngine.Object.Destroy(spray, localSprayLifetime);
+                        _plugin._networkUtils.SendSprayToNetwork(hitInfo.point, hitInfo.normal, sprayId);
                     }
                     
-                    // Handle max sprays limit
-                    if (_plugin._spawnedSprays.Count > localMaxSprays)
+                    // If we're the host, start the timer to remove this spray
+                    if (PhotonNetwork.IsMasterClient && PhotonNetwork.IsConnected && localSprayLifetime > 0)
                     {
-                        // Remove the oldest sprays when we exceed the limit
-                        while (_plugin._spawnedSprays.Count > localMaxSprays)
-                        {
-                            GameObject oldest = _plugin._spawnedSprays[0];
-                            _plugin._spawnedSprays.RemoveAt(0);
-                            
-                            if (oldest != null)
-                            {
-                                UnityEngine.Object.Destroy(oldest);
-                            }
-                        }
+                        var coroutine = _plugin.StartCoroutine(_plugin.ScheduleSprayRemoval(sprayId, localSprayLifetime));
+                        _plugin._sprayRemovalCoroutines[sprayId] = coroutine;
                     }
                     
                     _plugin._lastSprayTime = Time.time;
-                    _plugin.LogMessage(LogLevel.Info,"[BiggerSprayMod] GIF spray placed successfully.");
-                }
-                else
-                {
-                    // Fallback to regular spray if GIF loading fails
-                    PlaceSpray(position, rotation, localSprayLifetime, localMaxSprays);
+                    return;
                 }
             }
-            else
-            {
-                // Use the standard spray placement for non-GIF images
-                PlaceSpray(position, rotation, localSprayLifetime, localMaxSprays);
-            }
+            
+            // Fall back to regular spray placement for non-animated cases
+            PlaceSpray(position, rotation, localSprayLifetime, localMaxSprays);
 
             // Send spray to other players
-            if (PhotonNetwork.IsConnected && sendToNetwork)
+            if (PhotonNetwork.IsConnected)
             {
-                _plugin._networkUtils.SendSprayToNetwork(hitInfo.point, hitInfo.normal);
+                _plugin._networkUtils.SendSprayToNetwork(hitInfo.point, hitInfo.normal, sprayId);
+                
+                // If we're the host, start the timer to remove this spray
+                if (PhotonNetwork.IsMasterClient && localSprayLifetime > 0)
+                {
+                    var coroutine = _plugin.StartCoroutine(_plugin.ScheduleSprayRemoval(sprayId, localSprayLifetime));
+                    _plugin._sprayRemovalCoroutines[sprayId] = coroutine;
+                }
             }
 
             _plugin._lastSprayTime = Time.time;
         }
         else
         {
-            _plugin.LogMessage(LogLevel.Warning,"[BiggerSprayMod] No valid surface found to spray on.");
+            _plugin.LogMessage(LogLevel.Warning,"[BiggerSprayMod] No valid surface detected to spray onto.");
         }
     }
-    
-    public void UpdateGifAnimations()
-    {
-        // Only update animation if enabled
-        if (!_plugin._configManager.AnimateGifs.Value)
-            return;
-        
-        float deltaTime = Time.deltaTime;
-        float minFrameTime = 1.0f / Mathf.Max(1, _plugin._configManager.GifFps.Value);
+}
 
-        // Update the currently cached global GIF frames for backward compatibility
-        try
-        {
-            if (_plugin._isAnimatedGif && _plugin._gifFrames != null && _plugin._gifFrameDelays != null && _plugin._gifFrames.Count > 1)
-            {
-                // Safety check for index bounds
-                if (_plugin._currentGifFrame < 0 || _plugin._currentGifFrame >= _plugin._gifFrames.Count || _plugin._currentGifFrame >= _plugin._gifFrameDelays.Count)
-                {
-                    _plugin._currentGifFrame = 0;
-                    _plugin._gifTimeSinceLastFrame = 0f;
-                    return;
-                }
-                
-                // Update the time since last frame
-                _plugin._gifTimeSinceLastFrame += deltaTime;
-                
-                // Check if it's time to show the next frame
-                float frameDelay = _plugin._gifFrameDelays[_plugin._currentGifFrame];
-                
-                // Use the larger of the two values to prevent too rapid updates
-                float effectiveDelay = Mathf.Max(frameDelay, minFrameTime);
-                
-                if (_plugin._gifTimeSinceLastFrame >= effectiveDelay)
-                {
-                    // Move to next frame with safety check
-                    _plugin._currentGifFrame = (_plugin._currentGifFrame + 1) % _plugin._gifFrames.Count;
-                    _plugin._gifTimeSinceLastFrame = 0f;
-                    
-                    // Check if the frame exists before setting it
-                    if (_plugin._currentGifFrame >= 0 && _plugin._currentGifFrame < _plugin._gifFrames.Count && _plugin._gifFrames[_plugin._currentGifFrame] != null)
-                    {
-                        // Update the cached texture to the new frame
-                        _plugin._cachedSprayTexture = _plugin._gifFrames[_plugin._currentGifFrame];
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _plugin.LogMessage(LogLevel.Error, $"[BiggerSprayMod] Error updating global GIF: {ex.Message}");
-        }
-
-        // Update each individual spray's animation independently
-        List<GameObject> toRemove = new List<GameObject>();
-        
-        foreach (GameObject spray in _plugin._spawnedSprays)
-        {
-            if (spray == null)
-            {
-                toRemove.Add(spray);
-                continue;
-            }
-            
-            try
-            {
-                GifSprayComponent gifComponent = spray.GetComponent<GifSprayComponent>();
-                if (gifComponent != null && gifComponent.IsGif)
-                {
-                    // Update this spray's animation
-                    gifComponent.UpdateAnimation(deltaTime, minFrameTime);
-                }
-            }
-            catch (Exception ex)
-            {
-                _plugin.LogMessage(LogLevel.Error, $"[BiggerSprayMod] Error updating GIF spray: {ex.Message}");
-                toRemove.Add(spray);
-            }
-        }
-        
-        // Clean up null or errored sprays
-        foreach (GameObject spray in toRemove)
-        {
-            _plugin._spawnedSprays.Remove(spray);
-        }
-    }
-    
-    private void UpdateActiveGifSprayTextures()
-    {
-        // This method is kept for backward compatibility
-        // It updates all GIF sprays that don't have their own frame data to use the global frames
-        
-        foreach (GameObject spray in _plugin._spawnedSprays)
-        {
-            if (spray == null) continue;
-            
-            // Check if this is a GIF spray without its own frames
-            GifSprayComponent gifComponent = spray.GetComponent<GifSprayComponent>();
-            if (gifComponent != null && gifComponent.IsGif && gifComponent.Frames.Count == 0)
-            {
-                // Update the texture on the material
-                MeshRenderer renderer = spray.GetComponent<MeshRenderer>();
-                if (renderer != null && renderer.material != null && _plugin._gifFrames.Count > _plugin._currentGifFrame)
-                {
-                    renderer.material.mainTexture = _plugin._gifFrames[_plugin._currentGifFrame];
-                }
-            }
-        }
-    }
+/// <summary>
+/// Simple component to identify a spray by ID
+/// </summary>
+public class SprayIdentifier : MonoBehaviour
+{
+    public string SprayId { get; set; }
 }

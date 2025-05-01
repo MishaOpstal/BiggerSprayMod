@@ -4,7 +4,7 @@ A customizable spray mod for R.E.P.O. that allows players to place custom images
 
 ## Features
 
-- **Custom Spray Images**: Use your own PNG/JPG as well as animated GIF images as sprays
+- **Custom Spray Images**: Use your own PNG/JPG images as sprays (GIF support coming soon)
 - **Adjustable Size**: Scale your sprays from tiny to massive
 - **Multiple Spray Support**: Cycle through multiple spray images in-game
 - **Network Synchronization**: All players see each other's sprays
@@ -15,33 +15,42 @@ A customizable spray mod for R.E.P.O. that allows players to place custom images
 
 1. Ensure you have [BepInEx](https://thunderstore.io/c/repo/p/BepInEx/BepInExPack/) installed
 2. Make sure you have [REPOLib](https://thunderstore.io/c/repo/p/Zehs/REPOLib/) installed
-3. Download the latest release from the [Thunderstore](https://thunderstore.io/c/repo/p/OnTheLink/BiggerSprayMod/) page or the [Releases](https://github.com/OnTheLink/BiggerSprayMod/releases/tag/Stable) tab.
-4. Extract the contents to your R.E.P.O. BepInEx plugins directory, or install using "Install local mod" in the Thunderstore settings.
+3. Download the latest release from the [Thunderstore](https://github.com/your-username/BiggerSprayMod/releases) page
+4. Extract the contents to your R.E.P.O. game directory
 5. The mod will be installed to `BepInEx/plugins/BiggerSprayMod`
 
 ## Adding Your Own Sprays
 
 1. Navigate to `BepInEx/config/BiggerSprayImages/`
-2. Place your GIF, PNG or JPG images in this folder
+2. Place your PNG or JPG images in this folder
 3. In-game, open the mod config and click "Refresh Sprays"
-4. Close and re-open the menu.
-5. Your images should now be available to select
+4. Your images should now be available to select
 
 **Note**: For best performance, keep your spray images under 5MB and use PNG format for transparency support.
 
 ## Controls
 
-| Key               | Action                                |
-|-------------------|---------------------------------------|
-| F                 | Place spray                           |
-| Q                 | Previous spray image                  |
-| E                 | Next spray image                      |
-| Left Alt          | Hold to preview spray size/position   |
-| +                 | Increase spray size                   |
-| -                 | Decrease spray size                   |
-| Mouse Wheel       | Adjust spray size (when previewing)   |
+| Key         | Action                                |
+|-------------|---------------------------------------|
+| F           | Place spray                           |
+| G           | Toggle between static and gif sprays  |
+| Left Arrow  | Previous spray image                  |
+| Right Arrow | Next spray image                      |
+| Left Alt    | Hold to preview spray size/position   |
+| +           | Increase spray size                   |
+| -           | Decrease spray size                   |
+| Mouse Wheel | Adjust spray size (when previewing)   |
 
 All keybindings can be changed in the mod config file.
+
+## Usage
+1. Press the spray key (default: F) to place a spray
+2. Use the previous/next keys (default: Left/Right arrows) to cycle through your sprays
+3. Hold the scale preview key (default: Left Alt) to see the size of your spray before placing it (optionally scroll or use +/- keys to adjust size)
+4. Press the toggle key (default: G) to toggle between static and gif sprays
+5. Use chat commands to manage sprays:
+   - `/addspray SPRAYNAME`: Add a new spray image from clipboard
+   - `/addgifspray GIFSPRAYNAME`: Add a new gif spray from clipboard
 
 ## Configuration
 
@@ -74,9 +83,9 @@ The mod creates a config file at `BepInEx/config/MishaOpstal.BigSprayMod.cfg` wi
 
 ## Compatibility
 
-- Requires R.E.P.O. version 0.1.2+
-- Requires BepInEx 5.4 or higher
-- Requires REPOLib 2.1.0+
+- Requires R.E.P.O. version 1.x or higher
+- Requires BepInEx 5.x or higher
+- Requires REPOLib
 
 ## Known Issues
 
@@ -91,8 +100,7 @@ This mod is released under the MIT License. See the LICENSE file for details.
 ## Credits
 
 - Developed by MishaOpstal
-- [Original SprayMod](https://thunderstore.io/c/repo/p/IvitoDev/SprayMod/) by [IvitoDev](https://thunderstore.io/c/repo/p/IvitoDev/SprayMod)
-- [mgGIF](https://github.com/gwaredd/mgGif) by [Gwaredd](https://github.com/gwaredd)
+- Original mod by [IvitoDev](https://thunderstore.io/c/repo/p/IvitoDev/SprayMod)
 - Special thanks to the R.E.P.O. modding community
 
 ## Support our recreation and future mods
