@@ -30,8 +30,7 @@ namespace BiggerSprayMod.web
             "c.tenor.com",
             "i.imgur.com",
             "i.gyazo.com",
-            "gifcdn.com",
-            "rule34.xxx"
+            "gifcdn.com"
         ];
 
         public WebUtils(BiggerSprayMod plugin)
