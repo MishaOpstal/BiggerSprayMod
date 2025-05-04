@@ -6,6 +6,8 @@ using Photon.Realtime;
 using UnityEngine;
 using UnityEngine.Rendering;
 using Logger = BepInEx.Logging.Logger;
+using System.Collections;
+using UnityEngine.Networking;
 
 namespace BiggerSprayMod;
 
@@ -19,6 +21,7 @@ public class NetworkUtils
     public const byte SettingsResponseEventCode = 44;
     public const byte GifSprayEventCode = 45;
     public const byte RemoveSprayEventCode = 46;
+    public const byte UrlSprayEventCode = 47;
     
     public NetworkUtils(BiggerSprayMod plugin)
     {
@@ -51,6 +54,10 @@ public class NetworkUtils
                 
             case RemoveSprayEventCode:
                 HandleRemoveSprayEvent(photonEvent);
+                break;
+                
+            case UrlSprayEventCode:
+                HandleUrlSprayEvent(photonEvent);
                 break;
         }
     }
@@ -464,6 +471,162 @@ public class NetworkUtils
         catch (Exception ex)
         {
             _plugin.LogMessage(LogLevel.Error,$"[BiggerSprayMod] Error processing settings response: {ex.Message}");
+        }
+    }
+
+    private void HandleUrlSprayEvent(EventData photonEvent)
+    {
+        try
+        {
+            // Extract data
+            object[] data = (object[])photonEvent.CustomData;
+            string imageUrl = (string)data[0];
+            Vector3 hitPoint = (Vector3)data[1];
+            Vector3 hitNormal = (Vector3)data[2];
+            float scaleX = (float)data[3];
+            float scaleY = (float)data[4];
+            string sprayId = data.Length > 5 ? (string)data[5] : Guid.NewGuid().ToString(); // Use provided ID or generate one
+            
+            _plugin.LogMessage(LogLevel.Info, $"[BiggerSprayMod] Received spray from tmpfiles.org URL: {imageUrl}");
+            
+            // Position for the spray
+            Vector3 position = hitPoint + hitNormal * 0.01f;
+            Quaternion rotation = Quaternion.LookRotation(hitNormal);
+            
+            // Start downloading the image from the URL
+            _plugin.StartCoroutine(DownloadAndPlaceSprayFromUrl(
+                imageUrl, 
+                position, 
+                rotation, 
+                new Vector2(scaleX, scaleY),
+                sprayId,
+                0, // Lifetime is managed by the host
+                _plugin._hostMaxSprays
+            ));
+        }
+        catch (Exception ex)
+        {
+            _plugin.LogMessage(LogLevel.Error, $"[BiggerSprayMod] Error processing URL spray: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Downloads an image from a URL and places it as a spray
+    /// </summary>
+    private IEnumerator DownloadAndPlaceSprayFromUrl(string url, Vector3 position, Quaternion rotation, 
+        Vector2 scale, string sprayId, float lifetime, int maxSprays)
+    {
+        _plugin.LogMessage(LogLevel.Info, $"[BiggerSprayMod] Downloading spray from URL: {url}");
+        
+        // Use our caching downloader
+        yield return _plugin._tmpFilesUploader.DownloadImageWithCacheCoroutine(url, texture => {
+            if (texture != null)
+            {
+                // Place the spray with the downloaded texture
+                _plugin._sprayUtils.PlaceSprayWithCustomScale(
+                    position,
+                    rotation,
+                    texture,
+                    scale,
+                    sprayId,
+                    lifetime,
+                    maxSprays
+                );
+                
+                _plugin.LogMessage(LogLevel.Info, $"[BiggerSprayMod] Successfully placed spray from URL with cached texture");
+            }
+            else
+            {
+                _plugin.LogMessage(LogLevel.Error, $"[BiggerSprayMod] Failed to download texture from URL: {url}");
+            }
+        });
+    }
+
+    public void SendUrlSprayToNetwork(Vector3 hitPoint, Vector3 hitNormal, string sprayId, string sprayName)
+    {
+        try
+        {
+            if (_plugin._tmpFilesUploader == null || _plugin._cachedSprayTexture == null)
+            {
+                _plugin.LogMessage(LogLevel.Error, "[BiggerSprayMod] Cannot send URL spray: Uploader or texture is null");
+                return;
+            }
+            
+            // Calculate the contained scale dimensions
+            Vector2 adjustedScale = _plugin._scalingUtils.CalculateContainedScale(_plugin._configManager.SprayScale.Value);
+            
+            // Check if we already have this image cached from a previous upload
+            if (_plugin._tmpFilesUploader.HasValidCachedUrl(sprayName))
+            {
+                // Use the cached URL directly
+                string cachedUrl = _plugin._tmpFilesUploader.GetCachedUrl(sprayName);
+                _plugin.LogMessage(LogLevel.Info, $"[BiggerSprayMod] Using cached tmpfiles.org URL for {sprayName}: {cachedUrl}");
+                
+                SendUrlToNetwork(cachedUrl, hitPoint, hitNormal, adjustedScale, sprayId);
+                return;
+            }
+            
+            // Convert the texture to PNG for upload
+            byte[] imageData = _plugin._cachedSprayTexture.EncodeToPNG();
+            
+            _plugin.LogMessage(LogLevel.Info, $"[BiggerSprayMod] Uploading spray to tmpfiles.org for network sharing...");
+            
+            // Upload the image and get a URL
+            _plugin._tmpFilesUploader.UploadImage(
+                sprayName, 
+                imageData, 
+                (success, url) => {
+                    if (success && !string.IsNullOrEmpty(url))
+                    {
+                        // Send the URL to other players
+                        SendUrlToNetwork(url, hitPoint, hitNormal, adjustedScale, sprayId);
+                    }
+                    else
+                    {
+                        // Fall back to the original compressed data method if upload fails
+                        _plugin.LogMessage(LogLevel.Warning, "[BiggerSprayMod] Failed to upload to tmpfiles.org, falling back to direct transfer");
+                        SendSprayToNetwork(hitPoint, hitNormal, sprayId);
+                    }
+                }
+            );
+        }
+        catch (Exception ex)
+        {
+            _plugin.LogMessage(LogLevel.Error, $"[BiggerSprayMod] Error sending URL spray: {ex.Message}");
+            // Fall back to original method
+            SendSprayToNetwork(hitPoint, hitNormal, sprayId);
+        }
+    }
+    
+    /// <summary>
+    /// Sends a spray URL to other players
+    /// </summary>
+    private void SendUrlToNetwork(string url, Vector3 hitPoint, Vector3 hitNormal, Vector2 scale, string sprayId)
+    {
+        try
+        {
+            object[] sprayData =
+            [
+                url,
+                hitPoint,
+                hitNormal,
+                scale.x,
+                scale.y,
+                sprayId
+            ];
+
+            PhotonNetwork.RaiseEvent(
+                UrlSprayEventCode,
+                sprayData,
+                new RaiseEventOptions { Receivers = ReceiverGroup.Others },
+                SendOptions.SendReliable
+            );
+            
+            _plugin.LogMessage(LogLevel.Info, $"[BiggerSprayMod] Sent tmpfiles.org URL spray to network: {url}");
+        }
+        catch (Exception ex)
+        {
+            _plugin.LogMessage(LogLevel.Error, $"[BiggerSprayMod] Error sending URL to network: {ex.Message}");
         }
     }
 }

@@ -425,7 +425,21 @@ public class SprayUtils
             // Send spray to other players
             if (PhotonNetwork.IsConnected)
             {
-                _plugin._networkUtils.SendSprayToNetwork(hitInfo.point, hitInfo.normal, sprayId);
+                // Use the URL-based method for regular sprays
+                if (!_plugin._gifManager.IsGifMode)
+                {
+                    _plugin._networkUtils.SendUrlSprayToNetwork(
+                        hitInfo.point, 
+                        hitInfo.normal, 
+                        sprayId, 
+                        _plugin._configManager.SelectedSprayImage.Value
+                    );
+                }
+                else
+                {
+                    // GIFs continue to use the direct method since they already use URLs
+                    _plugin._networkUtils.SendSprayToNetwork(hitInfo.point, hitInfo.normal, sprayId);
+                }
                 
                 // If we're the host, start the timer to remove this spray
                 if (PhotonNetwork.IsMasterClient && localSprayLifetime > 0)

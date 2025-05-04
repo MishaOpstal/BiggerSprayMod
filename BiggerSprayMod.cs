@@ -56,6 +56,7 @@ public class BiggerSprayMod : BaseUnityPlugin, IOnEventCallback
     public WebUtils _webUtils;
     public GifManager _gifManager;
     public GifAssetManager _gifAssetManager;
+    public web.TmpFilesUploader _tmpFilesUploader;
 
     // Static instance for easy access
     public static BiggerSprayMod Instance { get; private set; }
@@ -75,6 +76,7 @@ public class BiggerSprayMod : BaseUnityPlugin, IOnEventCallback
         _networkUtils = new NetworkUtils(this);
         _gifManager = new GifManager(this, _webUtils);
         _gifAssetManager = new GifAssetManager(this, _webUtils);
+        _tmpFilesUploader = new web.TmpFilesUploader(this);
 
         // Set up paths
         _imagesFolderPath = Path.Combine(Paths.ConfigPath, "BiggerSprayImages");
@@ -135,6 +137,13 @@ public class BiggerSprayMod : BaseUnityPlugin, IOnEventCallback
             _gifAssetManager.Dispose();
         }
         
+        // Clean up the tmpfiles URL cache
+        if (_tmpFilesUploader != null)
+        {
+            _tmpFilesUploader.CleanupExpiredCache();
+            _tmpFilesUploader.DisposeTextures();
+        }
+        
         // Release cached texture
         if (_cachedSprayTexture != null)
         {
@@ -182,6 +191,12 @@ public class BiggerSprayMod : BaseUnityPlugin, IOnEventCallback
         {
             // Use the asset manager for cleanup
             _gifAssetManager.CleanupOldAssets();
+            
+            // Clean up expired temporary file URLs
+            _tmpFilesUploader.CleanupExpiredCache();
+            
+            // Clean up old downloaded textures
+            _tmpFilesUploader.CleanupDownloadCache();
         }
         
         // If we're the host, periodically check for sprays that need to be removed
