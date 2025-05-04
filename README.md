@@ -2,6 +2,14 @@
 
 A customizable spray mod for R.E.P.O. that allows players to place custom images throughout the game world.
 
+---
+
+This project includes third-party software:
+
+- mgGif by Gwaredd Mountain (MIT License). See [gif/mgGif_LICENSE](https://github.com/OnTheLink/BiggerSprayMod/blob/main/gif/mgGif_LICENSE).
+
+---
+
 ## Features
 
 - **Custom Spray Images**: Use your own PNG/JPG images as sprays (GIF support coming soon)
@@ -93,7 +101,7 @@ The mod creates a config file at `BepInEx/config/MishaOpstal.BigSprayMod.cfg` wi
 - If you experience lag when placing sprays, try using smaller image files
 - Transparent PNGs work best with this mod
 
-## License
+## Licenses
 
 Includes mgGif by Gwaredd Mountain, licensed under the MIT License. See [gif/mgGif_LICENSE](https://github.com/OnTheLink/BiggerSprayMod/blob/main/gif/mgGif_LICENSE).
 
