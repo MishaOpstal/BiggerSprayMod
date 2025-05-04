@@ -137,6 +137,19 @@ public class SprayUtils
     
     public void CheckForRefreshSprays()
     {
+        // Check if the open image folder button was pressed
+        if (_plugin._configManager.OpenImagesFolderButton.Value)
+        {
+            _plugin.LogMessage(LogLevel.Info,"[BiggerSprayMod] Opening image folder...");
+
+            // Open the images folder
+            string folderPath = _plugin._imagesFolderPath ?? _plugin.GetPluginPath();
+            Application.OpenURL(folderPath);
+
+            // Reset the button back to false
+            _plugin._configManager.OpenImagesFolderButton.Value = false;
+        }
+        // Check if the refresh button was pressed
         if (_plugin._configManager.RefreshSpraysButton.Value)
         {
             _plugin.LogMessage(LogLevel.Info,"[BiggerSprayMod] Refreshing sprays list...");

@@ -27,6 +27,7 @@ namespace BiggerSprayMod
         public ConfigEntry<bool> RefreshSpraysButton;
         public ConfigEntry<bool> RefreshGifsButton;
         public ConfigEntry<bool> OpenGifConfigFolderButton;
+        public ConfigEntry<bool> OpenImagesFolderButton;
         public ConfigEntry<Color> ScalePreviewColor;
         public ConfigEntry<float> MinScaleSize;
         public ConfigEntry<float> MaxScaleSize;
@@ -52,6 +53,64 @@ namespace BiggerSprayMod
             if (_plugin._availableImages == null || _plugin._availableImages.Count == 0)
                 _plugin._availableImages = ["DefaultSpray.png"];
 
+            SprayLifetimeSeconds = _plugin.Config.Bind(
+                "Host Settings",
+                "Spray Lifetime (Seconds)",
+                60f,
+                new ConfigDescription(
+                    "How long the spray should last. Set to 0 for permanent sprays.",
+                    new AcceptableValueRange<float>(0f, 300f)
+                )
+            );
+            
+            // Add handler for when spray lifetime is changed
+            SprayLifetimeSeconds.SettingChanged += (_, _) =>
+            {
+                // Only hosts can control spray lifetimes
+                if (Photon.Pun.PhotonNetwork.IsMasterClient && Photon.Pun.PhotonNetwork.IsConnected)
+                {
+                    _plugin.UpdateAllSprayLifetimes();
+                }
+            };
+
+            MaxSpraysAllowed = _plugin.Config.Bind(
+                "Host Settings",
+                "Max Sprays",
+                10,
+                new ConfigDescription(
+                    "Maximum number of sprays before the oldest is deleted.",
+                    new AcceptableValueRange<int>(1, 100)
+                )
+            );
+            
+            SelectedSprayImage = _plugin.Config.Bind(
+                "Spray Settings",
+                "Selected Spray Image",
+                _plugin._availableImages.FirstOrDefault() ?? "DefaultSpray.png",
+                new ConfigDescription(
+                    "The image used for spraying.",
+                    new AcceptableValueList<string>(_plugin._availableImages.ToArray())
+                )
+            );
+
+            SelectedSprayImage.SettingChanged += (_, _) =>
+            {
+                _plugin.LogMessage(LogLevel.Info, "[BiggerSprayMod] Image selection changed. Reloading texture...");
+                string path = System.IO.Path.Combine(_plugin._imagesFolderPath, SelectedSprayImage.Value);
+                _plugin._cachedSprayTexture = _plugin._imageUtils.LoadTexture(path);
+                if (_plugin._cachedSprayTexture != null)
+                {
+                    _plugin._originalImageDimensions = new Vector2(_plugin._cachedSprayTexture.width, _plugin._cachedSprayTexture.height);
+                }
+            };
+
+            RefreshSpraysButton = _plugin.Config.Bind(
+                "Spray Settings",
+                "Refresh Sprays",
+                false,
+                new ConfigDescription("Set to TRUE to refresh the list of available sprays.")
+            );
+            
             SprayKey = _plugin.Config.Bind(
                 "Spray Settings",
                 "Spray Key",
@@ -78,6 +137,13 @@ namespace BiggerSprayMod
                 "Show spray if it exceeds the size limit locally",
                 true,
                 new ConfigDescription("Show the spray even if the image is large (Locally).")
+            );
+            
+            OpenImagesFolderButton = _plugin.Config.Bind(
+                "Spray Settings",
+                "Open Images Folder",
+                false,
+                new ConfigDescription("Set to TRUE to open the folder containing the spray images.")
             );
 
             ToggleGifModeKey = _plugin.Config.Bind(
@@ -123,6 +189,26 @@ namespace BiggerSprayMod
             {
                 // When the setting changes, update all existing GIF animators
                 _plugin._gifAssetManager.SetAllAnimatorsPaused(!AnimateGifsInWorld.Value);
+            };
+            
+            // Add the GIF selection setting
+            SelectedGifName = _plugin.Config.Bind(
+                "GIF Settings",
+                "Selected GIF",
+                _plugin._gifManager.AvailableGifs.Count > 0 ? _plugin._gifManager.AvailableGifs[0] : "No GIFs Available",
+                new ConfigDescription(
+                    "The GIF used for spraying when in GIF mode.",
+                    new AcceptableValueList<string>(_plugin._gifManager.AvailableGifs.ToArray())
+                )
+            );
+
+            SelectedGifName.SettingChanged += (_, _) =>
+            {
+                if (_plugin._gifManager.IsGifMode && SelectedGifName.Value != _plugin._gifManager.CurrentGifName)
+                {
+                    _plugin.LogMessage(LogLevel.Info, $"[BiggerSprayMod] GIF selection changed to: {SelectedGifName.Value}");
+                    _plugin._gifManager.SelectGif(SelectedGifName.Value);
+                }
             };
 
             ScaleKey = _plugin.Config.Bind(
@@ -199,84 +285,6 @@ namespace BiggerSprayMod
                 new Color(0.0f, 1.0f, 0.0f, 0.5f), // Semi-transparent green
                 new ConfigDescription("The color of the scale preview.")
             );
-
-            SprayLifetimeSeconds = _plugin.Config.Bind(
-                "Host Settings",
-                "Spray Lifetime (Seconds)",
-                60f,
-                new ConfigDescription(
-                    "How long the spray should last. Set to 0 for permanent sprays.",
-                    new AcceptableValueRange<float>(0f, 300f)
-                )
-            );
-            
-            // Add handler for when spray lifetime is changed
-            SprayLifetimeSeconds.SettingChanged += (_, _) =>
-            {
-                // Only hosts can control spray lifetimes
-                if (Photon.Pun.PhotonNetwork.IsMasterClient && Photon.Pun.PhotonNetwork.IsConnected)
-                {
-                    _plugin.UpdateAllSprayLifetimes();
-                }
-            };
-
-            MaxSpraysAllowed = _plugin.Config.Bind(
-                "Host Settings",
-                "Max Sprays",
-                10,
-                new ConfigDescription(
-                    "Maximum number of sprays before the oldest is deleted.",
-                    new AcceptableValueRange<int>(1, 100)
-                )
-            );
-
-            SelectedSprayImage = _plugin.Config.Bind(
-                "Spray Settings",
-                "Selected Spray Image",
-                _plugin._availableImages.FirstOrDefault() ?? "DefaultSpray.png",
-                new ConfigDescription(
-                    "The image used for spraying.",
-                    new AcceptableValueList<string>(_plugin._availableImages.ToArray())
-                )
-            );
-
-            SelectedSprayImage.SettingChanged += (_, _) =>
-            {
-                _plugin.LogMessage(LogLevel.Info, "[BiggerSprayMod] Image selection changed. Reloading texture...");
-                string path = System.IO.Path.Combine(_plugin._imagesFolderPath, SelectedSprayImage.Value);
-                _plugin._cachedSprayTexture = _plugin._imageUtils.LoadTexture(path);
-                if (_plugin._cachedSprayTexture != null)
-                {
-                    _plugin._originalImageDimensions = new Vector2(_plugin._cachedSprayTexture.width, _plugin._cachedSprayTexture.height);
-                }
-            };
-
-            RefreshSpraysButton = _plugin.Config.Bind(
-                "Spray Settings",
-                "Refresh Sprays",
-                false,
-                new ConfigDescription("Set to TRUE to refresh the list of available sprays.")
-            );
-
-            // Add the GIF selection setting
-            SelectedGifName = _plugin.Config.Bind(
-                "GIF Settings",
-                "Selected GIF",
-                _plugin._gifManager.AvailableGifs.Count > 0 ? _plugin._gifManager.AvailableGifs[0] : "No GIFs Available",
-                new ConfigDescription(
-                    "The GIF used for spraying when in GIF mode.",
-                    new AcceptableValueList<string>(_plugin._gifManager.AvailableGifs.ToArray())
-                )
-            );
-
-            SelectedGifName.SettingChanged += (_, _) =>
-            {
-                if (_plugin._gifManager.IsGifMode && SelectedGifName.Value != _plugin._gifManager.CurrentGifName)
-                {
-                    _plugin.LogMessage(LogLevel.Info, $"[BiggerSprayMod] GIF selection changed to: {SelectedGifName.Value}");
-                    _plugin._gifManager.SelectGif(SelectedGifName.Value);
-                }
-            };
         }
 
         public void UpdateImageListConfig()
