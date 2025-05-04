@@ -55,7 +55,7 @@ namespace BiggerSprayMod.web
             {
                 Gifs = new List<GifEntry>
                 {
-                    new GifEntry { Name = "Example GIF", Url = "https://media.tenor.com/QWbwHoE-2fIAAAAC/cat-typing.gif" }
+                    new GifEntry { Name = "Quack duck", Url = "https://media.tenor.com/fOjhwb3eEqIAAAAi/quack-duck.gif" }
                 }
             };
         }
