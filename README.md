@@ -95,7 +95,7 @@ The mod creates a config file at `BepInEx/config/MishaOpstal.BigSprayMod.cfg` wi
 
 ## License
 
-This mod is released under the MIT License. See the LICENSE file for details.
+Includes mgGif by Gwaredd Mountain, licensed under the MIT License. See gif/LICENSE_mgGif.
 
 ## Credits
 
