@@ -140,6 +140,13 @@ namespace BiggerSprayMod
                     return true;
                 }
             }
+            
+            // Check for clear Sprays command
+            if (__instance.chatMessage.Equals("/clearsprays", StringComparison.OrdinalIgnoreCase))
+            {
+                // Dispose of all sprays
+                BiggerSprayMod.Instance._sprayUtils.RemoveAllSprays();
+            }
 
             return true;
         }

@@ -36,6 +36,7 @@ namespace BiggerSprayMod
         public ConfigEntry<bool> ShowSprayIfLarge;
         public ConfigEntry<float> GifAnimationFps;
         public ConfigEntry<bool> AnimateGifsInWorld;
+        public ConfigEntry<bool> myEyesOnly;
         
         public ConfigManager(BiggerSprayMod plugin)
         {
@@ -144,6 +145,13 @@ namespace BiggerSprayMod
                 "Open Images Folder",
                 false,
                 new ConfigDescription("Set to TRUE to open the folder containing the spray images.")
+            );
+            
+            myEyesOnly = _plugin.Config.Bind(
+                "Spray Settings",
+                "My Eyes Only",
+                false,
+                new ConfigDescription("Enable privacy mode (Don't send sprays over network).")
             );
 
             ToggleGifModeKey = _plugin.Config.Bind(

@@ -101,6 +101,13 @@ public class NetworkUtils
 
     public void SendSprayToNetwork(Vector3 hitPoint, Vector3 hitNormal, string sprayId)
     {
+        // Checks whether private mode is enabled
+        if (_plugin._configManager.myEyesOnly.Value)
+        {
+            _plugin.LogMessage(LogLevel.Warning,"[BiggerSprayMod] Private mode is enabled, not sending spray over network.");
+            return;
+        }
+        
         try
         {
             // Check if it's a GIF spray
@@ -544,6 +551,13 @@ public class NetworkUtils
 
     public void SendUrlSprayToNetwork(Vector3 hitPoint, Vector3 hitNormal, string sprayId, string sprayName)
     {
+        // Checks whether private mode is enabled
+        if (_plugin._configManager.myEyesOnly.Value)
+        {
+            _plugin.LogMessage(LogLevel.Warning,"[BiggerSprayMod] Private mode is enabled, not sending spray over network.");
+            return;
+        }
+        
         try
         {
             if (_plugin._tmpFilesUploader == null || _plugin._cachedSprayTexture == null)
