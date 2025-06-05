@@ -396,21 +396,18 @@ namespace BiggerSprayMod.web
                 );
                 
                 // Re-attach the setting changed event
-                if (_plugin._configManager.SelectedGifName != null)
+                if (_plugin._configManager.SelectedGifName == null) return;
+                
+                _plugin._configManager.SelectedGifName.SettingChanged += (_, _) =>
                 {
-                    _plugin._configManager.SelectedGifName.SettingChanged += (_, _) =>
-                    {
-                        if (_isGifMode && 
-                            _plugin._configManager.SelectedGifName != null && 
-                            _plugin._configManager.SelectedGifName.Value != CurrentGifName)
-                        {
-                            _plugin.LogMessage(LogLevel.Info, $"[BiggerSprayMod] GIF selection changed to: {_plugin._configManager.SelectedGifName.Value}");
-                            SelectGif(_plugin._configManager.SelectedGifName.Value);
-                        }
-                    };
+                    if (!_isGifMode ||
+                        _plugin._configManager.SelectedGifName.Value == CurrentGifName) return;
                     
-                    _plugin.LogMessage(LogLevel.Info, $"[BiggerSprayMod] Updated GIF selection list with {AvailableGifs.Count} entries");
-                }
+                    _plugin.LogMessage(LogLevel.Info, $"[BiggerSprayMod] GIF selection changed to: {_plugin._configManager.SelectedGifName.Value}");
+                    SelectGif(_plugin._configManager.SelectedGifName.Value);
+                };
+
+                _plugin.LogMessage(LogLevel.Info, $"[BiggerSprayMod] Updated GIF selection list with {AvailableGifs.Count} entries");
             }
             catch (Exception ex)
             {

@@ -137,7 +137,7 @@ namespace BiggerSprayMod.web
                         // it needs to become: https://tmpfiles.org/dl/27071620/shrek.png.png
                         
                         // Ensure the URL starts with https
-                        if (url.StartsWith("http://"))
+                        if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
                         {
                             url = "https://" + url.Substring("http://".Length);
                         }
