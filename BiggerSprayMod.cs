@@ -64,6 +64,7 @@ public class BiggerSprayMod : BaseUnityPlugin, IOnEventCallback
 
     private void Awake()
     {
+        this.gameObject.hideFlags = HideFlags.HideAndDontSave;
         Instance = this;
         
         // Initialize managers and utility classes
@@ -83,7 +84,11 @@ public class BiggerSprayMod : BaseUnityPlugin, IOnEventCallback
 
         // Initialize in correct order
         _imageUtils.LoadAvailableImages();
+        
+        // Initialize GIF manager first so configs have access to available GIFs
+        _gifManager.InitializeGifConfig();
         _configManager.Initialize();
+        _gifManager.initializeGifList();
         _sprayUtils.CreateSprayPrefabs();
 
         string preloadPath = Path.Combine(_imagesFolderPath, _configManager.SelectedSprayImage.Value);

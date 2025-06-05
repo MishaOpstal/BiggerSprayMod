@@ -45,14 +45,11 @@ namespace BiggerSprayMod
 
         public void Initialize()
         {
-            // Set up all configuration entries
-            SetupConfig();
-        }
-
-        private void SetupConfig()
-        {
-            if (_plugin._availableImages == null || _plugin._availableImages.Count == 0)
-                _plugin._availableImages = ["DefaultSpray.png"];
+            if (_plugin._availableImages.Count == 0)
+            {
+                // Add a default image if none are available
+                _plugin._availableImages.Add("DefaultSpray.png");
+            }
 
             SprayLifetimeSeconds = _plugin.Config.Bind(
                 "Host Settings",
@@ -325,4 +322,4 @@ namespace BiggerSprayMod
             };
         }
     }
-} 
+}
