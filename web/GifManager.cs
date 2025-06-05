@@ -27,7 +27,7 @@ namespace BiggerSprayMod.web
         
         // Properties
         public bool IsGifMode => _isGifMode;
-        public List<string> AvailableGifs { get; private set; } = new List<string>();
+        public List<string> AvailableGifs { get; private set; } = new List<string> { "No GIFs Available" };
         public string CurrentGifName { get; private set; } = string.Empty;
         
         public GifManager(BiggerSprayMod plugin, WebUtils webUtils)
@@ -35,11 +35,9 @@ namespace BiggerSprayMod.web
             _plugin = plugin;
             _webUtils = webUtils;
             _gifConfigPath = Path.Combine(BepInEx.Paths.ConfigPath, "BiggerSprayGifs.json");
-            
-            InitializeGifConfig();
         }
         
-        private void InitializeGifConfig()
+        public void InitializeGifConfig()
         {
             try
             {
@@ -54,14 +52,26 @@ namespace BiggerSprayMod.web
                 {
                     _gifConfig = GifConfig.Load(_gifConfigPath);
                 }
-                
-                // Build available GIFs list
-                RefreshGifList();
             }
             catch (Exception ex)
             {
                 _plugin.LogMessage(LogLevel.Error, $"[BiggerSprayMod] Failed to initialize GIF config: {ex.Message}");
                 _isGifEnabled = false;
+                // Ensure we have at least one item in case of error
+                AvailableGifs.Clear();
+                AvailableGifs.Add("No GIFs Available");
+            }
+        }
+
+        public void initializeGifList()
+        {
+            // Build available GIFs list
+            RefreshGifList();
+            
+            // Make sure we always have at least one item in the list
+            if (AvailableGifs.Count == 0)
+            {
+                AvailableGifs.Add("No GIFs Available");
             }
         }
         
@@ -344,16 +354,37 @@ namespace BiggerSprayMod.web
         {
             try
             {
-                // Rebind the selected GIF config with updated list
+                // Check if plugin and config manager are initialized
+                if (_plugin == null || _plugin._configManager == null)
+                {
+                    _plugin?.LogMessage(LogLevel.Error, "[BiggerSprayMod] Cannot update GIF list config: Plugin or ConfigManager is null");
+                    return;
+                }
+
+                // Check if the AvailableGifs list is initialized
+                if (AvailableGifs == null)
+                {
+                    AvailableGifs = new List<string> { "No GIFs Available" };
+                }
+
+                // Check if the config and SelectedGifName are initialized
+                if (_plugin.Config == null || _plugin._configManager.SelectedGifName == null)
+                {
+                    _plugin.LogMessage(LogLevel.Error, "[BiggerSprayMod] Cannot update GIF list config: Config or SelectedGifName is null");
+                    return;
+                }
+
+                // Remove the old config entry
                 _plugin.Config.Remove(_plugin._configManager.SelectedGifName.Definition);
                 
                 // Get the current selection or default to the first item
                 string selectedGif = _plugin._configManager.SelectedGifName.Value;
-                if (!AvailableGifs.Contains(selectedGif))
+                if (string.IsNullOrEmpty(selectedGif) || !AvailableGifs.Contains(selectedGif))
                 {
                     selectedGif = AvailableGifs.Count > 0 ? AvailableGifs[0] : "No GIFs Available";
                 }
                 
+                // Create a new config entry
                 _plugin._configManager.SelectedGifName = _plugin.Config.Bind(
                     "GIF Settings",
                     "Selected GIF",
@@ -365,21 +396,23 @@ namespace BiggerSprayMod.web
                 );
                 
                 // Re-attach the setting changed event
+                if (_plugin._configManager.SelectedGifName == null) return;
+                
                 _plugin._configManager.SelectedGifName.SettingChanged += (_, _) =>
                 {
-                    if (_isGifMode && _plugin._configManager.SelectedGifName.Value != CurrentGifName)
-                    {
-                        _plugin.LogMessage(LogLevel.Info, $"[BiggerSprayMod] GIF selection changed to: {_plugin._configManager.SelectedGifName.Value}");
-                        SelectGif(_plugin._configManager.SelectedGifName.Value);
-                    }
+                    if (!_isGifMode ||
+                        _plugin._configManager.SelectedGifName.Value == CurrentGifName) return;
+                    
+                    _plugin.LogMessage(LogLevel.Info, $"[BiggerSprayMod] GIF selection changed to: {_plugin._configManager.SelectedGifName.Value}");
+                    SelectGif(_plugin._configManager.SelectedGifName.Value);
                 };
-                
+
                 _plugin.LogMessage(LogLevel.Info, $"[BiggerSprayMod] Updated GIF selection list with {AvailableGifs.Count} entries");
             }
             catch (Exception ex)
             {
-                _plugin.LogMessage(LogLevel.Error, $"[BiggerSprayMod] Error updating GIF list config: {ex.Message}");
+                _plugin?.LogMessage(LogLevel.Error, $"[BiggerSprayMod] Error updating GIF list config: {ex.Message}");
             }
         }
     }
-} 
+}

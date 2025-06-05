@@ -98,6 +98,27 @@ public class SprayUtils
         return false;
     }
     
+    /// <summary>
+    /// Removes all actively tracked sprays
+    /// </summary>
+    public void RemoveAllSprays()
+    {
+        _plugin.LogMessage(LogLevel.Info,"[BiggerSprayMod] Removing all sprays...");
+
+        foreach (var spray in _sprayIdsToGameObjects.Values)
+        {
+            if (spray != null)
+            {
+                UnityEngine.Object.Destroy(spray);
+            }
+        }
+
+        _sprayIdsToGameObjects.Clear();
+        _plugin._spawnedSprays.Clear();
+
+        _plugin.LogMessage(LogLevel.Info,"[BiggerSprayMod] All sprays removed.");
+    }
+    
     public void CreateDefaultSpray()
     {
         try
@@ -425,20 +446,24 @@ public class SprayUtils
             // Send spray to other players
             if (PhotonNetwork.IsConnected)
             {
-                // Use the URL-based method for regular sprays
-                if (!_plugin._gifManager.IsGifMode)
+                // Checks whether private mode is enabled
+                if (!_plugin._configManager.myEyesOnly.Value)
                 {
-                    _plugin._networkUtils.SendUrlSprayToNetwork(
-                        hitInfo.point, 
-                        hitInfo.normal, 
-                        sprayId, 
-                        _plugin._configManager.SelectedSprayImage.Value
-                    );
-                }
-                else
-                {
-                    // GIFs continue to use the direct method since they already use URLs
-                    _plugin._networkUtils.SendSprayToNetwork(hitInfo.point, hitInfo.normal, sprayId);
+                    // Use the URL-based method for regular sprays
+                    if (!_plugin._gifManager.IsGifMode)
+                    {
+                        _plugin._networkUtils.SendUrlSprayToNetwork(
+                            hitInfo.point, 
+                            hitInfo.normal, 
+                            sprayId, 
+                            _plugin._configManager.SelectedSprayImage.Value
+                        );
+                    }
+                    else
+                    {
+                        // GIFs continue to use the direct method since they already use URLs
+                        _plugin._networkUtils.SendSprayToNetwork(hitInfo.point, hitInfo.normal, sprayId);
+                    }
                 }
                 
                 // If we're the host, start the timer to remove this spray

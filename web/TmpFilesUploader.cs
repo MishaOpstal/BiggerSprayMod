@@ -112,7 +112,7 @@ namespace BiggerSprayMod.web
                     string url = null;
                     
                     // Pattern for direct URL
-                    string pattern1 = "\"url\":\"(https://tmpfiles\\.org/[^\"]+)\"";
+                    string pattern1 = "\"url\":\"(https?://tmpfiles\\.org/[^\"]+)\"";
                     Match match1 = Regex.Match(response, pattern1);
                     
                     if (match1.Success && match1.Groups.Count > 1)
@@ -122,7 +122,7 @@ namespace BiggerSprayMod.web
                     else
                     {
                         // Alternative pattern for API response that might include a data object
-                        string pattern2 = "\"data\":\\s*{[^}]*\"url\":\\s*\"(https://tmpfiles\\.org/[^\"]+)\"";
+                        string pattern2 = "\"data\":\\s*{[^}]*\"url\":\\s*\"(https?://tmpfiles\\.org/[^\"]+)\"";
                         Match match2 = Regex.Match(response, pattern2);
                         
                         if (match2.Success && match2.Groups.Count > 1)
@@ -135,6 +135,12 @@ namespace BiggerSprayMod.web
                     {
                         // the url at this point is like this: https://tmpfiles.org/27071620/shrek.png.png
                         // it needs to become: https://tmpfiles.org/dl/27071620/shrek.png.png
+                        
+                        // Ensure the URL starts with https
+                        if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
+                        {
+                            url = "https://" + url.Substring("http://".Length);
+                        }
 
                         // Extract the file ID and file name from the URL
                         string[] parts = url.Split('/');

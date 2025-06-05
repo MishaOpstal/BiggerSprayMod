@@ -1,3 +1,10 @@
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using BepInEx.Logging;
+using HarmonyLib;
+using Photon.Pun;
+using Photon.Realtime;
 using UnityEngine;
 
 namespace BiggerSprayMod
@@ -92,7 +99,27 @@ namespace BiggerSprayMod
             }
             else if (Input.GetKeyDown(_plugin._configManager.SprayKey.Value))
             {
-                _plugin._sprayUtils.TrySpray();
+                // Get the PlayerAvatar component from the local player
+                List<PlayerAvatar> playerAvatars = SemiFunc.PlayerGetAll();
+                PlayerAvatar? player = playerAvatars.FirstOrDefault(p => p.photonView.IsMine);
+                
+                // Print debug information
+                if (player == null)
+                {
+                    _plugin.LogMessage(LogLevel.Warning, "[BiggerSprayMod] No local PlayerAvatar found.");
+                    return;
+                }
+                
+                _plugin.LogMessage(LogLevel.Info,$"[BiggerSprayMod] Local PlayerAvatar found: {player.photonView.ViewID}");
+                
+                // Make sure the player is still alive and the spray is available (BindingFlags.Instance | BindingFlags.NonPublic, check deadSet in PlayerAvatar)
+                bool isAlive = !(bool)(typeof(PlayerAvatar).GetField("deadSet", BindingFlags.Instance | BindingFlags.NonPublic)
+                    ?.GetValue(player) ?? false);
+                if (isAlive)
+                {
+                    // Trigger the spray action
+                    _plugin._sprayUtils.TrySpray();
+                }
             }
         }
         
