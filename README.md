@@ -18,12 +18,13 @@ This project includes third-party software:
 - **Network Synchronization**: All players see each other's sprays
 - **Scale Preview**: See exactly how big your spray will be before placing it
 - **Host Customization**: Server hosts can control spray lifetime and maximum count
+- **Privacy Mode**: You can enable My Eyes Only in order to prevent your game from sending sprays send by you
 
 ## Installation
 
 1. Ensure you have [BepInEx](https://thunderstore.io/c/repo/p/BepInEx/BepInExPack/) installed
 2. Make sure you have [REPOLib](https://thunderstore.io/c/repo/p/Zehs/REPOLib/) installed
-3. Download the latest release from the [Thunderstore](https://thunderstore.io/c/repo/p/OnTheLink/BiggerSprayMod/) page
+3. Download the latest release from the [Thunderstore](https://github.com/your-username/BiggerSprayMod/releases) page
 4. Extract the contents to your R.E.P.O. game directory
 5. The mod will be installed to `BepInEx/plugins/BiggerSprayMod`
 
@@ -59,6 +60,7 @@ All keybindings can be changed in the mod config file.
 5. Use chat commands to manage sprays:
    - `/addspray SPRAYNAME`: Add a new spray image from clipboard
    - `/addgifspray GIFSPRAYNAME`: Add a new gif spray from clipboard
+   - `/clearsprays`: Clears all sprays from your local client (Does not affect other players)
 
 ## Configuration
 
@@ -69,6 +71,7 @@ The mod creates a config file at `BepInEx/config/MishaOpstal.BigSprayMod.cfg` wi
 - **Previous/Next Spray Key**: Keys to cycle through your sprays (Default: Q/E)
 - **Show spray if it exceeds the size limit locally**: Whether to show large sprays on your end (Default: true)
 - **Selected Spray Image**: Currently selected spray image
+- **My Eyes Only**: Toggles between privacy mode and public mode, privacy mode will disable all spray sending locally
 
 ### Scale Settings
 - **Scale Preview Key**: Key to hold for previewing spray size (Default: Left Alt)
@@ -87,7 +90,7 @@ The mod creates a config file at `BepInEx/config/MishaOpstal.BigSprayMod.cfg` wi
 
 - When joining a server, the mod automatically synchronizes with the host's settings
 - Sprays are compressed before sending to reduce network traffic
-- Extremely large images (>5MB) may not be sent over the network
+- Extremely large images (>5MB) may not be sent over the fallback network (If tmpfiles cannot be reached etc.)
 
 ## Compatibility
 
