@@ -114,7 +114,7 @@ namespace BiggerSprayMod
                     player = SemiFunc.PlayerAvatarLocal();
                 }
                 
-                if (player != null)
+                if (player == null)
                 {
                     _plugin.LogMessage(LogLevel.Warning, "[BiggerSprayMod][" + (PhotonNetwork.InRoom ? "Multiplayer" : "Singleplayer") + "] No PlayerAvatar found.");
                     return;
