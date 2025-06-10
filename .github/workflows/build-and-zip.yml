@@ -1,0 +1,54 @@
+﻿name: Build and Package BiggerSprayMod
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '6.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build project
+        run: dotnet build --configuration Debug
+
+      - name: Extract version from manifest.json
+        id: get_version
+        run: |
+          VERSION=$(jq -r '.version_number' manifest.json)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Create output directory
+        run: mkdir -p package
+
+      - name: Copy required files
+        run: |
+          cp bin/Debug/netstandard2.1/BiggerSprayMod.dll package/
+          cp bin/Debug/netstandard2.1/BiggerSprayMod.deps.json package/
+          cp icon.png manifest.json mgGif_LICENSE README.md package/
+
+      - name: Create zip archive
+        run: |
+          ZIP_NAME="OnTheLink-BiggerSprayMod-${{ env.VERSION }}.zip"
+          cd package
+          zip "../$ZIP_NAME" *
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: OnTheLink-BiggerSprayMod-${{ env.VERSION }}
+          path: OnTheLink-BiggerSprayMod-${{ env.VERSION }}.zip

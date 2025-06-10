@@ -1,0 +1,10 @@
+{
+    "name": "BiggerSprayMod",
+    "version_number": "1.6.7",
+    "website_url": "https://thunderstore.io/c/repo/p/OnTheLink/",
+    "description": "A recreation of the already existing SprayMod, bigger size, GIFs, Configurability",
+    "dependencies": [
+        "BepInEx-BepInExPack-5.4.2100",
+		"Zehs-REPOLib-2.1.0"
+    ]
+}
