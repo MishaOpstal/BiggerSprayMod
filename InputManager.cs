@@ -99,18 +99,26 @@ namespace BiggerSprayMod
             }
             else if (Input.GetKeyDown(_plugin._configManager.SprayKey.Value))
             {
-                // Get the PlayerAvatar component from the local player
-                List<PlayerAvatar> playerAvatars = SemiFunc.PlayerGetAll();
-                PlayerAvatar? player = playerAvatars.FirstOrDefault(p => p.photonView.IsMine);
+                PlayerAvatar? player;
                 
-                // Print debug information
-                if (player == null)
+                // Check if we are currently in multiplayer mode
+                if (PhotonNetwork.InRoom)
                 {
-                    _plugin.LogMessage(LogLevel.Warning, "[BiggerSprayMod] No local PlayerAvatar found.");
-                    return;
+                    // Get the PlayerAvatar component from the local player
+                    List<PlayerAvatar> playerAvatars = SemiFunc.PlayerGetAll();
+                    player = playerAvatars.FirstOrDefault(p => p.photonView.IsMine);
+                }
+                else
+                {
+                    // In single-player mode, get the PlayerAvatar from the local player
+                    player = SemiFunc.PlayerAvatarLocal();
                 }
                 
-                _plugin.LogMessage(LogLevel.Info,$"[BiggerSprayMod] Local PlayerAvatar found: {player.photonView.ViewID}");
+                if (player == null)
+                {
+                    _plugin.LogMessage(LogLevel.Warning, "[BiggerSprayMod][" + (PhotonNetwork.InRoom ? "Multiplayer" : "Singleplayer") + "] No PlayerAvatar found.");
+                    return;
+                }
                 
                 // Make sure the player is still alive and the spray is available (BindingFlags.Instance | BindingFlags.NonPublic, check deadSet in PlayerAvatar)
                 bool isAlive = !(bool)(typeof(PlayerAvatar).GetField("deadSet", BindingFlags.Instance | BindingFlags.NonPublic)
