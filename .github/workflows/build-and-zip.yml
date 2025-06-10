@@ -48,7 +48,7 @@ jobs:
           zip "../$ZIP_NAME" *
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: OnTheLink-BiggerSprayMod-${{ env.VERSION }}
           path: OnTheLink-BiggerSprayMod-${{ env.VERSION }}.zip
