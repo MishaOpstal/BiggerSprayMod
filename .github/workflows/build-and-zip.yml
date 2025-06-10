@@ -41,13 +41,8 @@ jobs:
           cp bin/Debug/netstandard2.1/BiggerSprayMod.deps.json package/
           cp icon.png manifest.json mgGif_LICENSE README.md package/
 
-      - name: Create zip archive
-        run: |
-          ZIP_NAME="OnTheLink-BiggerSprayMod-${{ env.VERSION }}.zip"
-          zip -j "$ZIP_NAME" package/*
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: OnTheLink-BiggerSprayMod-${{ env.VERSION }}
-          path: OnTheLink-BiggerSprayMod-${{ env.VERSION }}.zip
+          path: package/*
