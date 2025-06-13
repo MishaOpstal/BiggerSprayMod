@@ -39,7 +39,7 @@ jobs:
         run: |
           cp bin/Debug/netstandard2.1/BiggerSprayMod.dll package/
           cp bin/Debug/netstandard2.1/BiggerSprayMod.deps.json package/
-          cp icon.png manifest.json mgGif_LICENSE README.md package/
+          cp icon.png manifest.json mgGif_LICENSE LICENSE README.md package/
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
