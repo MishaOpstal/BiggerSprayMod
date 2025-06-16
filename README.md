@@ -24,7 +24,7 @@ This project includes third-party software:
 
 1. Ensure you have [BepInEx](https://thunderstore.io/c/repo/p/BepInEx/BepInExPack/) installed
 2. Make sure you have [REPOLib](https://thunderstore.io/c/repo/p/Zehs/REPOLib/) installed
-3. Download the latest release from the [Thunderstore](https://github.com/your-username/BiggerSprayMod/releases) page
+3. Download the latest release from the [Thunderstore](https://thunderstore.io/c/repo/p/OnTheLink/BiggerSprayMod/) page
 4. Extract the contents to your R.E.P.O. game directory
 5. The mod will be installed to `BepInEx/plugins/BiggerSprayMod`
 
